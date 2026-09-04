@@ -58,11 +58,15 @@ const gameplayStages = [
 ];
 
 const scoringStages = [
-  { title: "Running", body: "The batsmen run and swap ends. Each completed swap scores one run." },
-  { title: "Four", body: "The ball reaches the boundary after touching the ground: four runs." },
-  { title: "Six", body: "The ball clears the boundary without bouncing: six runs." },
-  { title: "Extras", body: "Wides, no-balls and byes add runs without a bat hit." },
-];
+  { key: "run", category: "bat", label: "Run", detail: "Swap ends", title: "Running", body: "The batsmen run and swap ends. Each completed swap scores one run." },
+  { key: "four", category: "bat", label: "4", detail: "Reaches boundary", title: "Four", body: "The ball reaches the boundary after touching the ground: four runs." },
+  { key: "six", category: "bat", label: "6", detail: "Clears boundary", title: "Six", body: "The ball clears the boundary without bouncing: six runs." },
+  { key: "wide", category: "extra", label: "Wide", detail: "+1 run", marker: "+1 wide", title: "Wide", body: "A ball too wide for the batsman to reach gives the batting team one extra run." },
+  { key: "no-ball", category: "extra", label: "No-ball", detail: "+1 run", marker: "+1 no-ball", title: "No-ball", body: "An illegal delivery gives the batting team one extra run, and the ball must be bowled again." },
+  { key: "bye", category: "extra", label: "Bye", detail: "Misses bat", marker: "+1 bye", title: "Bye", body: "If a legal ball misses both bat and body, completed runs are scored as byes." },
+  { key: "leg-bye", category: "extra", label: "Leg bye", detail: "Hits body", marker: "+1 leg bye", title: "Leg bye", body: "If the ball hits the batsman’s body instead of the bat, completed runs may count as leg byes." },
+  { key: "penalty", category: "extra", label: "Penalty", detail: "+5 runs", marker: "+5 penalty", title: "Penalty runs", body: "The umpire can award five penalty runs when the other team breaks certain rules." },
+] as const;
 
 const fielders = [
   { left: 50, top: 18, role: "wicketkeeper" },
@@ -122,7 +126,11 @@ export default function Home() {
           ".hit-flash",
           ".play-cue",
           ".bowler-arm",
+          ".score-boundary-flash",
+          ".extra-marker",
           ".score-method",
+          ".score-category-label",
+          ".score-divider",
           ".dismissal-method",
           ".over-ball",
         ].forEach((target) => utils.remove(target));
@@ -135,6 +143,8 @@ export default function Home() {
         utils.set(".pitch-strip", { scaleY: 1, opacity: step === 1 || step === 2 || populatedGroundVisible ? 1 : 0 });
         utils.set(".pitch-detail", { opacity: 0, scale: 0.76, rotate: 2 });
         utils.set(".player-token", { opacity: 0, scale: 0 });
+        utils.set(".batter-north", { top: "31%", left: "48.7%" });
+        utils.set(".batter-south", { top: "69%", left: "51.3%" });
         utils.set(".role-bowler", { top: "79%", translateY: 0, rotate: 0 });
         utils.set(".bowler-arm", { opacity: 0, rotate: 25 });
         utils.set(".team-card", { opacity: 0, translateY: 12 });
@@ -151,7 +161,11 @@ export default function Home() {
         utils.set(".play-ball", { opacity: 0, left: "50%", top: "79%", scale: 1 });
         utils.set(".hit-flash", { opacity: 0, scale: 0 });
         utils.set(".play-cue", { opacity: 0, translateY: 8 });
+        utils.set(".score-boundary-flash", { opacity: 0, scale: 1 });
+        utils.set(".extra-marker", { opacity: 0, scale: 0.76, translateY: 8 });
         utils.set(".score-method", { opacity: 0, translateY: 10 });
+        utils.set(".score-category-label", { opacity: 0 });
+        utils.set(".score-divider", { opacity: 0 });
         utils.set(".dismissal-method", { opacity: 0, scale: 0.86 });
         utils.set(".over-ball", { opacity: 0, scale: 0 });
 
@@ -175,6 +189,10 @@ export default function Home() {
           utils.set(".goal-token", { opacity: step === 5 && currentGameplayStage === 0 ? 1 : 0, translateY: 0 });
           utils.set(".play-cue", { opacity: step === 5 && currentGameplayStage === 1 ? 1 : 0, translateY: 0 });
           utils.set(".score-method", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0, translateY: 0, scale: 1 });
+          utils.set(".score-category-label", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0 });
+          utils.set(".score-divider", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0 });
+          utils.set(".score-boundary-flash", { opacity: step === 5 && currentGameplayStage === 2 && (currentScoringStage === 1 || currentScoringStage === 2) ? 0.65 : 0, scale: 1 });
+          utils.set(".extra-marker", { opacity: step === 5 && currentGameplayStage === 2 && currentScoringStage >= 3 ? 1 : 0, scale: 1, translateY: 0 });
           utils.set(".dismissal-method", { opacity: step === 5 && currentGameplayStage === 3 ? 1 : 0, scale: 1 });
           utils.set(".over-ball", { opacity: step === 5 && currentGameplayStage === 4 ? 1 : 0, scale: 1 });
           utils.set(".play-ball", {
@@ -416,55 +434,150 @@ export default function Home() {
         }
 
         if (step === 5 && currentGameplayStage === 2) {
-          const angle = Math.random() * Math.PI * 2;
-          const boundaryRadius = currentScoringStage === 2 ? 52 : 42;
-          const boundaryLeft = 50 + Math.cos(angle) * boundaryRadius;
-          const boundaryTop = 50 + Math.sin(angle) * boundaryRadius;
           utils.set(".player-token", { opacity: 1, scale: 1 });
-          if (currentScoringStage === 0) {
-            animate(".play-ball", {
-              opacity: [0, 1, 1],
-              left: ["48.7%", "51.3%"],
-              top: ["31%", "69%"],
-              scale: [0.8, 1],
-              delay: 220,
-              duration: 1100,
-              ease: "inOut(2)",
-            });
-            animate(".role-batsmen", { scale: [1, 1.12, 1], delay: 840, duration: 420, ease: "out(3)" });
-          } else {
-            animate(".play-ball", {
-              opacity: [0, 1, 1],
-              left: ["48.7%", `${boundaryLeft}%`],
-              top: ["31%", `${boundaryTop}%`],
-              scale: [0.8, currentScoringStage === 2 ? 1.3 : 1.15],
-              delay: 280,
-              duration: currentScoringStage === 2 ? 1250 : 1050,
-              ease: "out(2)",
-            });
-          }
+          utils.set(".score-category-label", { opacity: 1 });
+          utils.set(".score-divider", { opacity: 1 });
           animate(".score-method", {
             opacity: [0, 1],
             translateY: [10, 0],
-            delay: stagger(90, { start: 620 }),
+            delay: stagger(70),
             duration: 400,
             ease: "out(3)",
           });
           animate(".score-method.is-active", {
             scale: [0.94, 1],
-            delay: 620,
+            delay: 120,
             duration: 460,
             ease: "out(4)",
           });
-          if (currentScoringStage < 3) {
-            animate(".hit-flash", {
-              opacity: [0, 0.75, 0],
-              scale: [0, 1.5, 2],
-              delay: 880,
-              duration: 520,
-              ease: "out(3)",
-            });
-          }
+
+          const runScoringAnimation = () => {
+            if (generation !== deliveryGeneration) return;
+            const angle = Math.random() * Math.PI * 2;
+            const boundaryRadius = currentScoringStage === 2 ? 56 : 44;
+            const boundaryLeft = 50 + Math.cos(angle) * boundaryRadius;
+            const boundaryTop = 50 + Math.sin(angle) * boundaryRadius;
+            const timeline = createTimeline({
+              onComplete: () => {
+                if (generation === deliveryGeneration) runScoringAnimation();
+              },
+            })
+              .set(".play-ball", { opacity: 0, left: "48.7%", top: "31%", scale: 1 }, 0)
+              .set(".hit-flash", { opacity: 0, scale: 0 }, 0)
+              .set(".score-boundary-flash", { opacity: 0, scale: 1 }, 0)
+              .set(".extra-marker", { opacity: 0, scale: 0.76, translateY: 8 }, 0)
+              .set(".batter-north", { top: "31%", left: "48.7%" }, 0)
+              .set(".batter-south", { top: "69%", left: "51.3%" }, 0);
+
+            if (currentScoringStage === 0) {
+              timeline
+                .add(".play-ball", {
+                  opacity: [0, 1, 1],
+                  left: ["48.7%", "34%"],
+                  top: ["31%", "42%"],
+                  scale: [0.8, 1],
+                  duration: 700,
+                  ease: "out(2)",
+                }, 220)
+                .add(".hit-flash", { opacity: [0, 0.75, 0], scale: [0, 1.5, 2], duration: 520, ease: "out(3)" }, 230)
+                .add(".batter-north", { top: ["31%", "69%"], duration: 1450, ease: "inOut(2)" }, 520)
+                .add(".batter-south", { top: ["69%", "31%"], duration: 1450, ease: "inOut(2)" }, 520)
+                .add(".play-ball", { opacity: 0, duration: 950 }, 1970);
+            } else if (currentScoringStage === 1) {
+              timeline
+                .add(".play-ball", {
+                  opacity: [0, 1, 1],
+                  left: ["48.7%", `${boundaryLeft}%`],
+                  top: ["31%", `${boundaryTop}%`],
+                  scale: [0.8, 1],
+                  duration: 1200,
+                  ease: "out(2)",
+                }, 280)
+                .add(".hit-flash", { opacity: [0, 0.75, 0], scale: [0, 1.5, 2], duration: 520, ease: "out(3)" }, 230)
+                .add(".score-boundary-flash", { opacity: [0, 0.8, 0], scale: [0.98, 1.02, 1.04], duration: 560, ease: "out(3)" }, 1260)
+                .add(".play-ball", { opacity: 0, duration: 950 }, 1820);
+            } else if (currentScoringStage === 2) {
+              timeline
+                .set(".play-ball", { opacity: 1, scale: 0.8 }, 0)
+                .add(".play-ball", {
+                  opacity: 1,
+                  left: ["48.7%", `${boundaryLeft}%`],
+                  top: ["31%", `${boundaryTop}%`],
+                  scale: [0.8, 1.95, 0.8],
+                  duration: 1750,
+                  ease: "linear",
+                }, 0)
+                .add(".hit-flash", { opacity: [0, 0.75, 0], scale: [0, 1.5, 2], duration: 520, ease: "out(3)" }, 0)
+                .add(".score-boundary-flash", { opacity: [0, 0.9, 0], scale: [0.98, 1.03, 1.07], duration: 600, ease: "out(3)" }, 1150)
+                .set(".play-ball", { opacity: 0 }, 1750)
+                .add(".hit-flash", { opacity: 0, duration: 600 }, 1750);
+            } else if (currentScoringStage === 3) {
+              timeline
+                .add(".play-ball", {
+                  opacity: [0, 1, 1],
+                  left: ["50%", "61%"],
+                  top: ["69%", "17%"],
+                  scale: [1, 0.86],
+                  duration: 1250,
+                  ease: "inOut(2)",
+                }, 240)
+                .add(".extra-marker", { opacity: [0, 1], scale: [0.76, 1], translateY: [8, 0], duration: 430, ease: "out(4)" }, 980)
+                .add(".extra-marker", { opacity: [1, 0], duration: 350, ease: "in(2)" }, 1650)
+                .add(".play-ball", { opacity: 0, duration: 950 }, 1490);
+            } else if (currentScoringStage === 4) {
+              timeline
+                .add(".play-ball", {
+                  opacity: [0, 1, 1],
+                  left: ["50%", "48.7%"],
+                  top: ["69%", "31%"],
+                  scale: [1, 0.9],
+                  duration: 1100,
+                  ease: "inOut(2)",
+                }, 220)
+                .add(".extra-marker", { opacity: [0, 1], scale: [0.76, 1], translateY: [8, 0], duration: 430, ease: "out(4)" }, 720)
+                .add(".extra-marker", { opacity: [1, 0], duration: 350, ease: "in(2)" }, 1600)
+                .add(".play-ball", { opacity: 0, duration: 950 }, 1500);
+            } else if (currentScoringStage === 5) {
+              timeline
+                .add(".play-ball", {
+                  opacity: [0, 1, 1],
+                  left: ["50%", "50%"],
+                  top: ["69%", "17%"],
+                  scale: [1, 0.86],
+                  duration: 1250,
+                  ease: "inOut(2)",
+                }, 220)
+                .add(".batter-north", { top: ["31%", "69%"], duration: 1350, ease: "inOut(2)" }, 850)
+                .add(".batter-south", { top: ["69%", "31%"], duration: 1350, ease: "inOut(2)" }, 850)
+                .add(".extra-marker", { opacity: [0, 1], scale: [0.76, 1], translateY: [8, 0], duration: 430, ease: "out(4)" }, 1320)
+                .add(".extra-marker", { opacity: [1, 0], duration: 350, ease: "in(2)" }, 2250)
+                .add(".play-ball", { opacity: 0, duration: 950 }, 1470);
+            } else if (currentScoringStage === 6) {
+              timeline
+                .add(".play-ball", {
+                  opacity: [0, 1, 1],
+                  left: ["50%", "48.7%"],
+                  top: ["69%", "31%"],
+                  scale: [1, 0.9],
+                  duration: 1050,
+                  ease: "inOut(2)",
+                }, 220)
+                .add(".hit-flash", { opacity: [0, 0.65, 0], scale: [0, 1.2, 1.7], duration: 430, ease: "out(3)" }, 1170)
+                .add(".play-ball", { left: ["48.7%", "35%"], top: ["31%", "40%"], duration: 650, ease: "out(2)" }, 1270)
+                .add(".batter-north", { top: ["31%", "69%"], duration: 1350, ease: "inOut(2)" }, 1400)
+                .add(".batter-south", { top: ["69%", "31%"], duration: 1350, ease: "inOut(2)" }, 1400)
+                .add(".extra-marker", { opacity: [0, 1], scale: [0.76, 1], translateY: [8, 0], duration: 430, ease: "out(4)" }, 1740)
+                .add(".extra-marker", { opacity: [1, 0], duration: 350, ease: "in(2)" }, 2760)
+                .add(".play-ball", { opacity: 0, duration: 950 }, 1920);
+            } else {
+              timeline
+                .add(".extra-marker", { opacity: [0, 1], scale: [0.7, 1.08, 1], translateY: [8, 0], duration: 620, ease: "out(4)" }, 300)
+                .add(".extra-marker", { opacity: [1, 0], duration: 350, ease: "in(2)" }, 1650)
+                .add(".hit-flash", { opacity: 0, duration: 650 }, 2000);
+            }
+          };
+
+          runScoringAnimation();
         }
 
         if (step === 5 && currentGameplayStage === 3) {
@@ -655,6 +768,10 @@ export default function Home() {
               <div className="player-token batter batter-south role-batsmen"><span>B</span></div>
               <div className="play-ball" aria-hidden="true" />
               <div className="hit-flash" aria-hidden="true" />
+              <div className="score-boundary-flash" aria-hidden="true" />
+              <div className="extra-marker" aria-hidden="true">
+                {"marker" in scoringStages[scoringStage] ? scoringStages[scoringStage].marker : ""}
+              </div>
               </div>
             </div>
           </div>
@@ -740,14 +857,41 @@ export default function Home() {
           </div>
 
           <div className="score-methods" aria-hidden={activeStep !== 5 || gameplayStage !== 2}>
-            {[
-              ["Run", "Swap ends"],
-              ["4", "Reaches boundary"],
-              ["6", "Clears boundary"],
-              ["Extra", "No bat needed"],
-            ].map(([score, detail]) => (
-              <div className={`score-method ${score === ["Run", "4", "6", "Extra"][scoringStage] ? "is-active" : ""}`} key={score}><b>{score}</b><span>{detail}</span></div>
-            ))}
+            <div className="score-category score-category-bat">
+              <span className="score-category-label">Runs off the bat</span>
+              <div className="score-category-grid score-bat-grid">
+                {scoringStages.map((method, index) => method.category === "bat" ? (
+                  <button
+                    className={`score-method ${index === scoringStage ? "is-active" : ""}`}
+                    type="button"
+                    key={method.key}
+                    onClick={() => setScoringStage(index)}
+                    tabIndex={activeStep === 5 && gameplayStage === 2 ? 0 : -1}
+                  >
+                    <b>{method.label}</b><span>{method.detail}</span>
+                  </button>
+                ) : null)}
+              </div>
+            </div>
+
+            <i className="score-divider" aria-hidden="true" />
+
+            <div className="score-category score-category-extras">
+              <span className="score-category-label">Extras</span>
+              <div className="score-category-grid score-extras-grid">
+                {scoringStages.map((method, index) => method.category === "extra" ? (
+                  <button
+                    className={`score-method score-extra-method ${index === scoringStage ? "is-active" : ""}`}
+                    type="button"
+                    key={method.key}
+                    onClick={() => setScoringStage(index)}
+                    tabIndex={activeStep === 5 && gameplayStage === 2 ? 0 : -1}
+                  >
+                    <b>{method.label}</b><span>{method.detail}</span>
+                  </button>
+                ) : null)}
+              </div>
+            </div>
           </div>
 
           <div className="dismissal-methods" aria-hidden={activeStep !== 5 || gameplayStage !== 3}>
