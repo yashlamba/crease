@@ -67,6 +67,8 @@ h1 { margin: 0; color: var(--white); font: 400 clamp(42px, 4.3vw, 64px)/.95 Geor
 .stumps { position: absolute; z-index: 5; left: 39%; display: flex; gap: 2px; }
 .stumps-north { top: 10%; }.stumps-south { bottom: 10%; }
 .stumps i { display: block; width: 3px; height: 15px; border-radius: 2px; background: #f7f8f1; box-shadow: 1px 1px rgba(0,0,0,.25); }
+.wicket-bail { position: absolute; z-index: 2; top: -2px; display: block; width: 7px; height: 2px; border-radius: 2px; background: #f7f8f1; box-shadow: 1px 1px rgba(0,0,0,.25); transform-origin: center; }
+.bail-left { left: -1px; }.bail-right { right: -1px; }
 .ground-label { position: absolute; z-index: 30; display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid rgba(112,207,255,.42); border-radius: 999px; background: rgba(4,20,16,.94); color: var(--white); font-size: 8px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; box-shadow: 0 6px 18px rgba(0,0,0,.3); backdrop-filter: blur(8px); pointer-events: none; touch-action: manipulation; }
 .lesson-step-2 .ground-label { pointer-events: auto; }
 .ground-label span { display: block; width: 17px; height: 1px; background: var(--blue); }
@@ -89,8 +91,8 @@ h1 { margin: 0; color: var(--white); font: 400 clamp(42px, 4.3vw, 64px)/.95 Geor
 .hit-flash { position: absolute; z-index: 8; top: 31%; left: 48.7%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 2px solid rgba(244,248,246,.7); border-radius: 50%; opacity: 0; }
 .score-boundary-flash { position: absolute; z-index: 12; inset: 5.5%; border: 3px solid var(--blue); border-radius: 50%; box-shadow: 0 0 25px rgba(112,207,255,.72); opacity: 0; pointer-events: none; }
 .extra-marker { position: absolute; z-index: 13; top: 22%; left: 57%; padding: 7px 10px; border: 1px solid var(--ball); border-radius: 999px; background: rgba(4,20,16,.94); color: var(--ball); box-shadow: 0 8px 22px rgba(0,0,0,.3); font-size: 8px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; opacity: 0; white-space: nowrap; }
+.wicket-marker { position: absolute; z-index: 14; top: 18%; left: 50%; padding: 8px 12px; border: 1px solid var(--ball); border-radius: 999px; background: rgba(4,20,16,.94); color: var(--ball); box-shadow: 0 8px 24px rgba(0,0,0,.34); font-size: 8px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; transform: translateX(-50%); opacity: 0; white-space: nowrap; }
 .bowler-arm { position: absolute; z-index: -1; top: -9px; right: 1px; display: block; width: 4px; height: 17px; border-radius: 4px; background: var(--team-b); box-shadow: 0 0 0 1px rgba(8,17,15,.25); transform-origin: 50% 100%; opacity: 0; }
-.lesson-step-6.gameplay-stage-4 .stumps-north i { background: var(--ball); box-shadow: 0 0 12px rgba(240,111,114,.8); }
 
 .pitch-detail { position: absolute; z-index: 15; top: 11%; bottom: 8%; left: 50%; width: min(25vw, 300px); min-width: 245px; margin-left: max(-12.5vw, -150px); transform-origin: center; }
 .detail-strip { position: absolute; inset: 0; overflow: visible; background: var(--sand); border: 1px solid rgba(255,255,255,.3); box-shadow: 0 30px 80px rgba(0,0,0,.42); }
@@ -182,6 +184,7 @@ h1 { margin: 0; color: var(--white); font: 400 clamp(42px, 4.3vw, 64px)/.95 Geor
 .dismissal-methods { width: min(42vw, 520px); }
 .dismissal-methods { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; }
 .dismissal-method { padding: 9px 13px; border: 1px solid rgba(240,111,114,.38); border-radius: 999px; background: rgba(5,18,15,.92); color: var(--white); font-size: 8px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; opacity: 0; backdrop-filter: blur(12px); }
+.dismissal-method.is-active { border-color: var(--ball); background: rgba(240,111,114,.14); color: var(--ball); box-shadow: 0 0 0 2px rgba(240,111,114,.08), 0 10px 24px rgba(0,0,0,.22); }
 
 .over-panel strong { display: block; margin-top: 21px; color: var(--muted); font-size: 9px; letter-spacing: .13em; text-transform: uppercase; }
 .over-balls { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }

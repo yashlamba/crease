@@ -68,6 +68,11 @@ const scoringStages = [
   { key: "penalty", category: "extra", label: "Penalty", detail: "+5 runs", marker: "+5 penalty", title: "Penalty runs", body: "The umpire can award five penalty runs when the other team breaks certain rules." },
 ] as const;
 
+const bowledStage = {
+  title: "Bowled",
+  body: "The batsman is out when a legal delivery hits the wicket and puts it down.",
+};
+
 const fielders = [
   { left: 50, top: 18, role: "wicketkeeper" },
   { left: 31, top: 27, role: "fielder" },
@@ -131,6 +136,8 @@ export default function Home() {
           ".score-method",
           ".score-category-label",
           ".score-divider",
+          ".wicket-bail",
+          ".wicket-marker",
           ".dismissal-method",
           ".over-ball",
         ].forEach((target) => utils.remove(target));
@@ -166,6 +173,9 @@ export default function Home() {
         utils.set(".score-method", { opacity: 0, translateY: 10 });
         utils.set(".score-category-label", { opacity: 0 });
         utils.set(".score-divider", { opacity: 0 });
+        utils.set(".stumps-north i", { translateX: 0, translateY: 0, rotate: 0 });
+        utils.set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 });
+        utils.set(".wicket-marker", { opacity: 0, scale: 0.78, translateY: 8 });
         utils.set(".dismissal-method", { opacity: 0, scale: 0.86 });
         utils.set(".over-ball", { opacity: 0, scale: 0 });
 
@@ -191,6 +201,7 @@ export default function Home() {
           utils.set(".score-method", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0, translateY: 0, scale: 1 });
           utils.set(".score-category-label", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0 });
           utils.set(".score-divider", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0 });
+          utils.set(".wicket-marker", { opacity: step === 5 && currentGameplayStage === 3 ? 1 : 0, scale: 1, translateY: 0 });
           utils.set(".score-boundary-flash", { opacity: step === 5 && currentGameplayStage === 2 && (currentScoringStage === 1 || currentScoringStage === 2) ? 0.65 : 0, scale: 1 });
           utils.set(".extra-marker", { opacity: step === 5 && currentGameplayStage === 2 && currentScoringStage >= 3 ? 1 : 0, scale: 1, translateY: 0 });
           utils.set(".dismissal-method", { opacity: step === 5 && currentGameplayStage === 3 ? 1 : 0, scale: 1 });
@@ -582,21 +593,69 @@ export default function Home() {
 
         if (step === 5 && currentGameplayStage === 3) {
           utils.set(".player-token", { opacity: 1, scale: 1 });
-          animate(".play-ball", {
-            opacity: [0, 1, 1],
-            left: ["50%", "50%"],
-            top: ["79%", "27%"],
-            delay: 240,
-            duration: 900,
-            ease: "in(2)",
-          });
           animate(".dismissal-method", {
             opacity: [0, 1],
             scale: [0.86, 1],
-            delay: stagger(85, { start: 700 }),
+            delay: stagger(85, { start: 220 }),
             duration: 380,
             ease: "out(4)",
           });
+
+          const runBowledAnimation = () => {
+            if (generation !== deliveryGeneration) return;
+
+            createTimeline({
+              onComplete: () => {
+                if (generation === deliveryGeneration) runBowledAnimation();
+              },
+            })
+              .set(".play-ball", { opacity: 0, left: "50%", top: "66%", scale: 1 }, 0)
+              .set(".role-bowler", { top: "79%", rotate: 0 }, 0)
+              .set(".bowler-arm", { opacity: 0, rotate: 25 }, 0)
+              .set(".stumps-north i", { translateX: 0, translateY: 0, rotate: 0 }, 0)
+              .set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 }, 0)
+              .set(".wicket-marker", { opacity: 0, scale: 0.78, translateY: 8 }, 0)
+              .add(".role-bowler", {
+                top: ["79%", "66%"],
+                rotate: [0, 4],
+                duration: 1600,
+                ease: "inOut(2)",
+              }, 0)
+              .add(".bowler-arm", {
+                opacity: 1,
+                rotate: [25, -120, 30],
+                duration: 650,
+                ease: "inOut(3)",
+              }, 1050)
+              .set(".play-ball", { opacity: 1 }, 1600)
+              .add(".play-ball", {
+                left: ["50%", "50%"],
+                top: ["66%", "27%"],
+                scale: [1, 0.82],
+                duration: 1250,
+                ease: "in(2)",
+              }, 1600)
+              .add(".role-bowler", {
+                top: ["66%", "79%"],
+                rotate: [4, 0],
+                duration: 1700,
+                ease: "inOut(2)",
+              }, 2200)
+              .add(".bowler-arm", { rotate: [30, 25], duration: 500, ease: "out(2)" }, 1700)
+              .set(".play-ball", { opacity: 0 }, 2850)
+              .add(".stumps-north i:nth-child(1)", { translateX: -5, translateY: -3, rotate: -28, duration: 430, ease: "out(4)" }, 2800)
+              .add(".stumps-north i:nth-child(2)", { translateY: -5, rotate: 18, duration: 430, ease: "out(4)" }, 2800)
+              .add(".stumps-north i:nth-child(3)", { translateX: 5, translateY: -2, rotate: 32, duration: 430, ease: "out(4)" }, 2800)
+              .add(".stumps-north .bail-left", { opacity: [1, 0], translateX: -12, translateY: -10, rotate: -55, duration: 520, ease: "out(3)" }, 2760)
+              .add(".stumps-north .bail-right", { opacity: [1, 0], translateX: 12, translateY: -9, rotate: 65, duration: 520, ease: "out(3)" }, 2760)
+              .add(".wicket-marker", { opacity: [0, 1], scale: [0.78, 1], translateY: [8, 0], duration: 380, ease: "out(4)" }, 2920)
+              .add(".wicket-marker", { opacity: [1, 0], duration: 300, ease: "in(2)" }, 4050)
+              .set(".stumps-north i", { translateX: 0, translateY: 0, rotate: 0 }, 4400)
+              .set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 }, 4400)
+              .add(".wicket-marker", { opacity: 0, duration: 700 }, 4400);
+          };
+
+          runBowledAnimation();
         }
 
         if (step === 5 && currentGameplayStage === 4) {
@@ -708,6 +767,8 @@ export default function Home() {
     ? { ...steps[3], ...teamStages[teamStage] }
     : activeStep === 5 && gameplayStage === 2
         ? { ...steps[5], ...scoringStages[scoringStage] }
+        : activeStep === 5 && gameplayStage === 3
+          ? { ...steps[5], ...bowledStage }
         : activeStep === 5
           ? { ...steps[5], ...gameplayStages[gameplayStage] }
           : steps[activeStep];
@@ -749,8 +810,8 @@ export default function Home() {
               <div className="pitch-strip">
                 <div className="crease crease-north" />
                 <div className="crease crease-south" />
-                <div className="stumps stumps-north"><i /><i /><i /></div>
-                <div className="stumps stumps-south"><i /><i /><i /></div>
+                <div className="stumps stumps-north"><i /><i /><i /><span className="wicket-bail bail-left" /><span className="wicket-bail bail-right" /></div>
+                <div className="stumps stumps-south"><i /><i /><i /><span className="wicket-bail bail-left" /><span className="wicket-bail bail-right" /></div>
               </div>
 
               {fielders.map(({ left, top, role }, index) => (
@@ -772,6 +833,7 @@ export default function Home() {
               <div className="extra-marker" aria-hidden="true">
                 {"marker" in scoringStages[scoringStage] ? scoringStages[scoringStage].marker : ""}
               </div>
+              <div className="wicket-marker" aria-hidden="true">Out — bowled</div>
               </div>
             </div>
           </div>
@@ -896,7 +958,7 @@ export default function Home() {
 
           <div className="dismissal-methods" aria-hidden={activeStep !== 5 || gameplayStage !== 3}>
             {["Bowled", "Caught", "LBW", "Run out", "Stumped"].map((method) => (
-              <span className="dismissal-method" key={method}>{method}</span>
+              <span className={`dismissal-method ${method === "Bowled" ? "is-active" : ""}`} key={method}>{method}</span>
             ))}
           </div>
 
