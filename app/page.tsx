@@ -6,27 +6,33 @@ import { useEffect, useRef, useState } from "react";
 const steps = [
   {
     number: "01",
-    short: "The game",
+    short: "Game",
     title: "What is cricket?",
     body: "A bat-and-ball game: one team scores runs, the other bowls and fields. Then they swap. Most runs wins.",
   },
   {
     number: "02",
-    short: "The ground",
+    short: "Ground",
     title: "The ground",
     body: "An oval playing area with a boundary around it and a 22-yard pitch at the centre.",
   },
   {
     number: "03",
-    short: "The pitch",
+    short: "Pitch",
     title: "The pitch",
     body: "The 22-yard centre strip. A wicket stands at each end, marked by bowling, popping and return creases.",
   },
   {
     number: "04",
-    short: "The teams",
+    short: "Teams",
     title: "The teams",
     body: "Cricket is played between two sides.",
+  },
+  {
+    number: "05",
+    short: "Roles",
+    title: "Player roles",
+    body: "Batsmen score runs. The bowler delivers; the wicket-keeper and fielders defend.",
   },
 ];
 
@@ -38,8 +44,17 @@ const teamStages = [
 ];
 
 const fielders = [
-  [50, 22], [31, 27], [69, 29], [20, 43], [80, 44], [33, 55],
-  [67, 57], [21, 72], [78, 73], [41, 82], [58, 83],
+  { left: 50, top: 18, role: "wicketkeeper" },
+  { left: 31, top: 27, role: "fielder" },
+  { left: 69, top: 29, role: "fielder" },
+  { left: 20, top: 43, role: "fielder" },
+  { left: 80, top: 44, role: "fielder" },
+  { left: 33, top: 55, role: "fielder" },
+  { left: 67, top: 57, role: "fielder" },
+  { left: 21, top: 72, role: "fielder" },
+  { left: 78, top: 73, role: "fielder" },
+  { left: 65, top: 84, role: "fielder" },
+  { left: 50, top: 79, role: "bowler" },
 ];
 
 export default function Home() {
@@ -48,6 +63,7 @@ export default function Home() {
   const [activeStep, setActiveStep] = useState(0);
   const [teamStage, setTeamStage] = useState(0);
   const [groundHighlight, setGroundHighlight] = useState<"boundary" | "circle" | "pitch" | null>(null);
+  const [roleHighlight, setRoleHighlight] = useState<"wicketkeeper" | "batsmen" | "fielder" | "bowler" | null>(null);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -69,14 +85,15 @@ export default function Home() {
           ".roster-dot",
           ".toss-coin",
           ".role-badge",
+          ".player-role-label",
         ].forEach((target) => utils.remove(target));
 
         utils.set(".field-shell", {
-          opacity: step === 2 ? 0.28 : step === 1 || (step === 3 && currentTeamStage === 3) ? 1 : 0,
-          scale: step === 2 ? 1.04 : step === 1 || (step === 3 && currentTeamStage === 3) ? 1 : 0.72,
+          opacity: step === 2 ? 0.28 : step === 1 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0,
+          scale: step === 2 ? 1.04 : step === 1 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0.72,
           rotate: 0,
         });
-        utils.set(".pitch-strip", { scaleY: 1, opacity: step === 1 || step === 2 || (step === 3 && currentTeamStage === 3) ? 1 : 0 });
+        utils.set(".pitch-strip", { scaleY: 1, opacity: step === 1 || step === 2 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0 });
         utils.set(".pitch-detail", { opacity: 0, scale: 0.76, rotate: 2 });
         utils.set(".player-token", { opacity: 0, scale: 0 });
         utils.set(".team-card", { opacity: 0, translateY: 12 });
@@ -87,22 +104,24 @@ export default function Home() {
         utils.set(".roster-dot", { opacity: 0, scale: 0 });
         utils.set(".toss-coin", { opacity: 0, scale: 0.5, rotateY: 0 });
         utils.set(".role-badge", { opacity: 0, translateY: 7 });
+        utils.set(".player-role-label", { opacity: 0, scale: 0.88 });
 
         if (prefersReducedMotion) {
           utils.set(".step-copy", { opacity: 1, translateY: 0 });
           utils.set(".concept-piece", { opacity: step === 0 ? 1 : 0, scale: 1, translateY: 0 });
-          utils.set(".field-shell", { opacity: step === 2 ? 0.28 : step === 1 || (step === 3 && currentTeamStage === 3) ? 1 : 0, scale: step === 2 ? 1.04 : 1 });
-          utils.set(".pitch-strip", { opacity: step === 1 || step === 2 || (step === 3 && currentTeamStage === 3) ? 1 : 0 });
+          utils.set(".field-shell", { opacity: step === 2 ? 0.28 : step === 1 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0, scale: step === 2 ? 1.04 : 1 });
+          utils.set(".pitch-strip", { opacity: step === 1 || step === 2 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0 });
           utils.set(".pitch-detail", { opacity: step === 2 ? 1 : 0, scale: 1, rotate: 0 });
           utils.set(".ground-label", { opacity: step === 1 ? 1 : 0, translateY: 0 });
           utils.set(".pitch-callout", { opacity: step === 2 ? 1 : 0, translateY: 0 });
-          utils.set(".player-token", { opacity: step === 3 && currentTeamStage === 3 ? 1 : 0, scale: 1 });
+          utils.set(".player-token", { opacity: step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0, scale: 1 });
           utils.set(".team-card", { opacity: step === 3 && currentTeamStage === 3 ? 1 : 0, translateY: 0 });
           utils.set(".team-sequence", { opacity: step === 3 && currentTeamStage < 3 ? 1 : 0 });
           utils.set(".team-side", { opacity: step === 3 && currentTeamStage < 3 ? 1 : 0, translateY: 0 });
           utils.set(".roster-dot", { opacity: step === 3 && currentTeamStage >= 1 && currentTeamStage <= 2 ? 1 : 0, scale: 1 });
           utils.set(".toss-coin", { opacity: step === 3 && currentTeamStage === 2 ? 1 : 0, scale: 1, rotateY: 0 });
           utils.set(".role-badge", { opacity: step === 3 && currentTeamStage === 2 ? 1 : 0, translateY: 0 });
+          utils.set(".player-role-label", { opacity: step === 4 ? 1 : 0, scale: 1 });
           return;
         }
 
@@ -239,6 +258,17 @@ export default function Home() {
             ease: "out(3)",
           });
         }
+
+        if (step === 4) {
+          utils.set(".player-token", { opacity: 1, scale: 1 });
+          animate(".player-role-label", {
+            opacity: [0, 1],
+            scale: [0.88, 1],
+            delay: stagger(110, { start: 180 }),
+            duration: 440,
+            ease: "out(4)",
+          });
+        }
       });
     });
 
@@ -247,6 +277,7 @@ export default function Home() {
 
   useEffect(() => {
     setGroundHighlight(null);
+    setRoleHighlight(null);
     scope.current?.methods.showStep(activeStep, teamStage);
   }, [activeStep, teamStage]);
 
@@ -304,7 +335,7 @@ export default function Home() {
     setActiveStep((current) => Math.max(0, current - 1));
   };
   const step = activeStep === 3 ? { ...steps[3], ...teamStages[teamStage] } : steps[activeStep];
-  const lessonComplete = activeStep === steps.length - 1 && teamStage === teamStages.length - 1;
+  const lessonComplete = activeStep === steps.length - 1;
 
   return (
     <div className={`lesson lesson-step-${activeStep + 1} team-stage-${teamStage + 1}`} ref={root}>
@@ -335,7 +366,7 @@ export default function Home() {
 
         <section className="ground-zone" aria-label="Top-down diagram of a cricket ground">
           <div className="field-anchor">
-            <div className="field-shell" data-highlight={groundHighlight ?? undefined}>
+            <div className="field-shell" data-highlight={groundHighlight ?? undefined} data-role-highlight={roleHighlight ?? undefined}>
               <div className="field-grass">
               <div className="boundary-rope" />
               <div className="inner-circle" />
@@ -346,18 +377,18 @@ export default function Home() {
                 <div className="stumps stumps-south"><i /><i /><i /></div>
               </div>
 
-              {fielders.map(([left, top], index) => (
+              {fielders.map(({ left, top, role }, index) => (
                 <div
-                  className="player-token fielder"
+                  className={`player-token fielder role-${role}`}
                   key={`fielder-${index}`}
                   style={{ left: `${left}%`, top: `${top}%` }}
-                  aria-label={`Fielder ${index + 1}`}
+                  aria-label={role === "wicketkeeper" ? "Wicketkeeper" : role === "bowler" ? "Bowler" : `Fielder ${index}`}
                 >
                   <span>{index + 1}</span>
                 </div>
               ))}
-              <div className="player-token batter batter-north"><span>A</span></div>
-                <div className="player-token batter batter-south"><span>B</span></div>
+              <div className="player-token batter batter-north role-batsmen"><span>A</span></div>
+                <div className="player-token batter batter-south role-batsmen"><span>B</span></div>
               </div>
             </div>
           </div>
@@ -404,6 +435,28 @@ export default function Home() {
           <div className="teams-summary" aria-hidden={activeStep !== 3 || teamStage !== 3}>
             <div className="team-card fielding-card"><span className="team-swatch cream" /><p>Fielding team<strong>11 on the ground</strong></p></div>
             <div className="team-card batting-card"><span className="team-swatch acid" /><p>Batting team<strong>2 batters at a time</strong></p></div>
+          </div>
+
+          <div className="player-role-layer" aria-hidden={activeStep !== 4}>
+            {([
+              ["wicketkeeper", "Wicket-keeper"],
+              ["batsmen", "Batsmen"],
+              ["fielder", "Fielder"],
+              ["bowler", "Bowler"],
+            ] as const).map(([role, label]) => (
+              <button
+                className={`player-role-label ${role}-role-label`}
+                type="button"
+                key={role}
+                tabIndex={activeStep === 4 ? 0 : -1}
+                onPointerEnter={() => setRoleHighlight(role)}
+                onPointerLeave={() => setRoleHighlight(null)}
+                onFocus={() => setRoleHighlight(role)}
+                onBlur={() => setRoleHighlight(null)}
+              >
+                <i />{label}
+              </button>
+            ))}
           </div>
         </section>
       </main>
