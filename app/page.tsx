@@ -57,6 +57,13 @@ const gameplayStages = [
   { title: "Overs", body: "Six legal balls make one over. Then another bowler delivers from the opposite end." },
 ];
 
+const scoringStages = [
+  { title: "Running", body: "The batsmen run and swap ends. Each completed swap scores one run." },
+  { title: "Four", body: "The ball reaches the boundary after touching the ground: four runs." },
+  { title: "Six", body: "The ball clears the boundary without bouncing: six runs." },
+  { title: "Extras", body: "Wides, no-balls and byes add runs without a bat hit." },
+];
+
 const fielders = [
   { left: 50, top: 18, role: "wicketkeeper" },
   { left: 31, top: 27, role: "fielder" },
@@ -77,6 +84,7 @@ export default function Home() {
   const [activeStep, setActiveStep] = useState(0);
   const [teamStage, setTeamStage] = useState(0);
   const [gameplayStage, setGameplayStage] = useState(0);
+  const [scoringStage, setScoringStage] = useState(0);
   const [groundHighlight, setGroundHighlight] = useState<"boundary" | "circle" | "pitch" | null>(null);
   const [roleHighlight, setRoleHighlight] = useState<"wicketkeeper" | "batsmen" | "fielder" | "bowler" | null>(null);
 
@@ -86,7 +94,7 @@ export default function Home() {
     scope.current = createScope({ root }).add((self) => {
       let deliveryGeneration = 0;
 
-      self.add("showStep", (step: number, currentTeamStage: number, currentGameplayStage: number) => {
+      self.add("showStep", (step: number, currentTeamStage: number, currentGameplayStage: number, currentScoringStage: number) => {
         deliveryGeneration += 1;
         const generation = deliveryGeneration;
         const gameFieldVisible = step === 5 && currentGameplayStage >= 1 && currentGameplayStage <= 3;
@@ -166,7 +174,7 @@ export default function Home() {
           utils.set(".gameplay-panel", { opacity: step === 5 && (currentGameplayStage === 0 || currentGameplayStage === 4) ? 1 : 0 });
           utils.set(".goal-token", { opacity: step === 5 && currentGameplayStage === 0 ? 1 : 0, translateY: 0 });
           utils.set(".play-cue", { opacity: step === 5 && currentGameplayStage === 1 ? 1 : 0, translateY: 0 });
-          utils.set(".score-method", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0, translateY: 0 });
+          utils.set(".score-method", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0, translateY: 0, scale: 1 });
           utils.set(".dismissal-method", { opacity: step === 5 && currentGameplayStage === 3 ? 1 : 0, scale: 1 });
           utils.set(".over-ball", { opacity: step === 5 && currentGameplayStage === 4 ? 1 : 0, scale: 1 });
           utils.set(".play-ball", {
@@ -409,18 +417,32 @@ export default function Home() {
 
         if (step === 5 && currentGameplayStage === 2) {
           const angle = Math.random() * Math.PI * 2;
-          const boundaryLeft = 50 + Math.cos(angle) * 42;
-          const boundaryTop = 50 + Math.sin(angle) * 42;
+          const boundaryRadius = currentScoringStage === 2 ? 52 : 42;
+          const boundaryLeft = 50 + Math.cos(angle) * boundaryRadius;
+          const boundaryTop = 50 + Math.sin(angle) * boundaryRadius;
           utils.set(".player-token", { opacity: 1, scale: 1 });
-          animate(".play-ball", {
-            opacity: [0, 1, 1],
-            left: ["48.7%", `${boundaryLeft}%`],
-            top: ["31%", `${boundaryTop}%`],
-            scale: [0.8, 1.15],
-            delay: 280,
-            duration: 1050,
-            ease: "out(2)",
-          });
+          if (currentScoringStage === 0) {
+            animate(".play-ball", {
+              opacity: [0, 1, 1],
+              left: ["48.7%", "51.3%"],
+              top: ["31%", "69%"],
+              scale: [0.8, 1],
+              delay: 220,
+              duration: 1100,
+              ease: "inOut(2)",
+            });
+            animate(".role-batsmen", { scale: [1, 1.12, 1], delay: 840, duration: 420, ease: "out(3)" });
+          } else {
+            animate(".play-ball", {
+              opacity: [0, 1, 1],
+              left: ["48.7%", `${boundaryLeft}%`],
+              top: ["31%", `${boundaryTop}%`],
+              scale: [0.8, currentScoringStage === 2 ? 1.3 : 1.15],
+              delay: 280,
+              duration: currentScoringStage === 2 ? 1250 : 1050,
+              ease: "out(2)",
+            });
+          }
           animate(".score-method", {
             opacity: [0, 1],
             translateY: [10, 0],
@@ -428,6 +450,21 @@ export default function Home() {
             duration: 400,
             ease: "out(3)",
           });
+          animate(".score-method.is-active", {
+            scale: [0.94, 1],
+            delay: 620,
+            duration: 460,
+            ease: "out(4)",
+          });
+          if (currentScoringStage < 3) {
+            animate(".hit-flash", {
+              opacity: [0, 0.75, 0],
+              scale: [0, 1.5, 2],
+              delay: 880,
+              duration: 520,
+              ease: "out(3)",
+            });
+          }
         }
 
         if (step === 5 && currentGameplayStage === 3) {
@@ -468,8 +505,8 @@ export default function Home() {
   useEffect(() => {
     setGroundHighlight(null);
     setRoleHighlight(null);
-    scope.current?.methods.showStep(activeStep, teamStage, gameplayStage);
-  }, [activeStep, teamStage, gameplayStage]);
+    scope.current?.methods.showStep(activeStep, teamStage, gameplayStage, scoringStage);
+  }, [activeStep, teamStage, gameplayStage, scoringStage]);
 
   useEffect(() => {
     const handleArrowKeys = (event: KeyboardEvent) => {
@@ -486,7 +523,10 @@ export default function Home() {
         event.preventDefault();
         if (activeStep === 3 && teamStage < teamStages.length - 1) {
           setTeamStage((current) => current + 1);
+        } else if (activeStep === 5 && gameplayStage === 2 && scoringStage < scoringStages.length - 1) {
+          setScoringStage((current) => current + 1);
         } else if (activeStep === 5 && gameplayStage < gameplayStages.length - 1) {
+          if (gameplayStage === 1) setScoringStage(0);
           setGameplayStage((current) => current + 1);
         } else {
           setActiveStep((current) => Math.min(steps.length - 1, current + 1));
@@ -497,7 +537,10 @@ export default function Home() {
         event.preventDefault();
         if (activeStep === 3 && teamStage > 0) {
           setTeamStage((current) => current - 1);
+        } else if (activeStep === 5 && gameplayStage === 2 && scoringStage > 0) {
+          setScoringStage((current) => current - 1);
         } else if (activeStep === 5 && gameplayStage > 0) {
+          if (gameplayStage === 3) setScoringStage(scoringStages.length - 1);
           setGameplayStage((current) => current - 1);
         } else {
           setActiveStep((current) => Math.max(0, current - 1));
@@ -507,12 +550,13 @@ export default function Home() {
 
     window.addEventListener("keydown", handleArrowKeys);
     return () => window.removeEventListener("keydown", handleArrowKeys);
-  }, [activeStep, teamStage, gameplayStage]);
+  }, [activeStep, teamStage, gameplayStage, scoringStage]);
 
   const goTo = (index: number) => {
     const nextStep = Math.max(0, Math.min(steps.length - 1, index));
     if (nextStep === 3 && activeStep !== 3) setTeamStage(0);
     if (nextStep === 5 && activeStep !== 5) setGameplayStage(0);
+    if (nextStep === 5 && activeStep !== 5) setScoringStage(0);
     setActiveStep(nextStep);
   };
   const goForward = () => {
@@ -520,7 +564,12 @@ export default function Home() {
       setTeamStage((current) => current + 1);
       return;
     }
+    if (activeStep === 5 && gameplayStage === 2 && scoringStage < scoringStages.length - 1) {
+      setScoringStage((current) => current + 1);
+      return;
+    }
     if (activeStep === 5 && gameplayStage < gameplayStages.length - 1) {
+      if (gameplayStage === 1) setScoringStage(0);
       setGameplayStage((current) => current + 1);
       return;
     }
@@ -531,7 +580,12 @@ export default function Home() {
       setTeamStage((current) => current - 1);
       return;
     }
+    if (activeStep === 5 && gameplayStage === 2 && scoringStage > 0) {
+      setScoringStage((current) => current - 1);
+      return;
+    }
     if (activeStep === 5 && gameplayStage > 0) {
+      if (gameplayStage === 3) setScoringStage(scoringStages.length - 1);
       setGameplayStage((current) => current - 1);
       return;
     }
@@ -539,13 +593,15 @@ export default function Home() {
   };
   const step = activeStep === 3
     ? { ...steps[3], ...teamStages[teamStage] }
-    : activeStep === 5
-      ? { ...steps[5], ...gameplayStages[gameplayStage] }
-      : steps[activeStep];
+    : activeStep === 5 && gameplayStage === 2
+        ? { ...steps[5], ...scoringStages[scoringStage] }
+        : activeStep === 5
+          ? { ...steps[5], ...gameplayStages[gameplayStage] }
+          : steps[activeStep];
   const lessonComplete = activeStep === steps.length - 1 && gameplayStage === gameplayStages.length - 1;
 
   return (
-    <div className={`lesson lesson-step-${activeStep + 1} team-stage-${teamStage + 1} gameplay-stage-${gameplayStage + 1}`} ref={root}>
+    <div className={`lesson lesson-step-${activeStep + 1} team-stage-${teamStage + 1} gameplay-stage-${gameplayStage + 1} scoring-stage-${scoringStage + 1}`} ref={root}>
       <header className="lesson-header">
         <a className="brand" href="#lesson" aria-label="Crease lesson home">
           <span className="brand-mark" aria-hidden="true">C</span>
@@ -556,7 +612,7 @@ export default function Home() {
 
       <main className="lesson-canvas" id="lesson">
         <section className="copy-zone" aria-live="polite">
-          <div className="step-copy" key={`${activeStep}-${teamStage}-${gameplayStage}`}>
+          <div className="step-copy" key={`${activeStep}-${teamStage}-${gameplayStage}-${scoringStage}`}>
             <p className="eyebrow">{step.number} / {String(steps.length).padStart(2, "0")}</p>
             <h1>{step.title}</h1>
             <p className="step-body">{step.body}</p>
@@ -690,7 +746,7 @@ export default function Home() {
               ["6", "Clears boundary"],
               ["Extra", "No bat needed"],
             ].map(([score, detail]) => (
-              <div className="score-method" key={score}><b>{score}</b><span>{detail}</span></div>
+              <div className={`score-method ${score === ["Run", "4", "6", "Extra"][scoringStage] ? "is-active" : ""}`} key={score}><b>{score}</b><span>{detail}</span></div>
             ))}
           </div>
 
