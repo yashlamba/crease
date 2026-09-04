@@ -1,6 +1,6 @@
 "use client";
 
-import { animate, createScope, stagger, utils } from "animejs";
+import { animate, createScope, createTimeline, stagger, utils } from "animejs";
 import { useEffect, useRef, useState } from "react";
 
 const steps = [
@@ -34,6 +34,12 @@ const steps = [
     title: "Player roles",
     body: "Batsmen score runs. The bowler delivers; the wicket-keeper and fielders defend.",
   },
+  {
+    number: "06",
+    short: "Game play",
+    title: "The goal",
+    body: "Score more runs than the other team.",
+  },
 ];
 
 const teamStages = [
@@ -41,6 +47,14 @@ const teamStages = [
   { title: "11 players each", body: "Each team names 11 players for the match." },
   { title: "The toss", body: "The toss decides which side bats first. The other side bowls and fields." },
   { title: "Ready to play", body: "All 11 fielders take the ground. Two batters enter—one at each end of the pitch." },
+];
+
+const gameplayStages = [
+  { title: "The goal", body: "Score more runs than the other team." },
+  { title: "Basic play", body: "The bowler delivers from one end. The batsman at the other end tries to hit the ball." },
+  { title: "Scoring", body: "Run between the wickets, reach the boundary, clear it, or receive extras." },
+  { title: "Taking wickets", body: "A wicket ends a batsman’s turn. These are the most common ways to take one." },
+  { title: "Overs", body: "Six legal balls make one over. Then another bowler delivers from the opposite end." },
 ];
 
 const fielders = [
@@ -62,6 +76,7 @@ export default function Home() {
   const scope = useRef<ReturnType<typeof createScope> | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [teamStage, setTeamStage] = useState(0);
+  const [gameplayStage, setGameplayStage] = useState(0);
   const [groundHighlight, setGroundHighlight] = useState<"boundary" | "circle" | "pitch" | null>(null);
   const [roleHighlight, setRoleHighlight] = useState<"wicketkeeper" | "batsmen" | "fielder" | "bowler" | null>(null);
 
@@ -69,7 +84,14 @@ export default function Home() {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     scope.current = createScope({ root }).add((self) => {
-      self.add("showStep", (step: number, currentTeamStage: number) => {
+      let deliveryGeneration = 0;
+
+      self.add("showStep", (step: number, currentTeamStage: number, currentGameplayStage: number) => {
+        deliveryGeneration += 1;
+        const generation = deliveryGeneration;
+        const gameFieldVisible = step === 5 && currentGameplayStage >= 1 && currentGameplayStage <= 3;
+        const populatedGroundVisible = step === 4 || (step === 3 && currentTeamStage === 3) || gameFieldVisible;
+
         [
           ".step-copy",
           ".concept-piece",
@@ -86,16 +108,27 @@ export default function Home() {
           ".toss-coin",
           ".role-badge",
           ".player-role-label",
+          ".gameplay-panel",
+          ".goal-token",
+          ".play-ball",
+          ".hit-flash",
+          ".play-cue",
+          ".bowler-arm",
+          ".score-method",
+          ".dismissal-method",
+          ".over-ball",
         ].forEach((target) => utils.remove(target));
 
         utils.set(".field-shell", {
-          opacity: step === 2 ? 0.28 : step === 1 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0,
-          scale: step === 2 ? 1.04 : step === 1 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0.72,
+          opacity: step === 2 ? 0.28 : step === 1 || populatedGroundVisible ? 1 : 0,
+          scale: step === 2 ? 1.04 : step === 1 || populatedGroundVisible ? 1 : 0.72,
           rotate: 0,
         });
-        utils.set(".pitch-strip", { scaleY: 1, opacity: step === 1 || step === 2 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0 });
+        utils.set(".pitch-strip", { scaleY: 1, opacity: step === 1 || step === 2 || populatedGroundVisible ? 1 : 0 });
         utils.set(".pitch-detail", { opacity: 0, scale: 0.76, rotate: 2 });
         utils.set(".player-token", { opacity: 0, scale: 0 });
+        utils.set(".role-bowler", { top: "79%", translateY: 0, rotate: 0 });
+        utils.set(".bowler-arm", { opacity: 0, rotate: 25 });
         utils.set(".team-card", { opacity: 0, translateY: 12 });
         utils.set(".ground-label", { opacity: 0, translateY: 8 });
         utils.set(".concept-piece", { opacity: 0, scale: 0.75, translateY: 10 });
@@ -105,16 +138,24 @@ export default function Home() {
         utils.set(".toss-coin", { opacity: 0, scale: 0.5, rotateY: 0 });
         utils.set(".role-badge", { opacity: 0, translateY: 7 });
         utils.set(".player-role-label", { opacity: 0, scale: 0.88 });
+        utils.set(".gameplay-panel", { opacity: 0 });
+        utils.set(".goal-token", { opacity: 0, translateY: 10 });
+        utils.set(".play-ball", { opacity: 0, left: "50%", top: "79%", scale: 1 });
+        utils.set(".hit-flash", { opacity: 0, scale: 0 });
+        utils.set(".play-cue", { opacity: 0, translateY: 8 });
+        utils.set(".score-method", { opacity: 0, translateY: 10 });
+        utils.set(".dismissal-method", { opacity: 0, scale: 0.86 });
+        utils.set(".over-ball", { opacity: 0, scale: 0 });
 
         if (prefersReducedMotion) {
           utils.set(".step-copy", { opacity: 1, translateY: 0 });
           utils.set(".concept-piece", { opacity: step === 0 ? 1 : 0, scale: 1, translateY: 0 });
-          utils.set(".field-shell", { opacity: step === 2 ? 0.28 : step === 1 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0, scale: step === 2 ? 1.04 : 1 });
-          utils.set(".pitch-strip", { opacity: step === 1 || step === 2 || step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0 });
+          utils.set(".field-shell", { opacity: step === 2 ? 0.28 : step === 1 || populatedGroundVisible ? 1 : 0, scale: step === 2 ? 1.04 : 1 });
+          utils.set(".pitch-strip", { opacity: step === 1 || step === 2 || populatedGroundVisible ? 1 : 0 });
           utils.set(".pitch-detail", { opacity: step === 2 ? 1 : 0, scale: 1, rotate: 0 });
           utils.set(".ground-label", { opacity: step === 1 ? 1 : 0, translateY: 0 });
           utils.set(".pitch-callout", { opacity: step === 2 ? 1 : 0, translateY: 0 });
-          utils.set(".player-token", { opacity: step === 4 || (step === 3 && currentTeamStage === 3) ? 1 : 0, scale: 1 });
+          utils.set(".player-token", { opacity: populatedGroundVisible ? 1 : 0, scale: 1 });
           utils.set(".team-card", { opacity: step === 3 && currentTeamStage === 3 ? 1 : 0, translateY: 0 });
           utils.set(".team-sequence", { opacity: step === 3 && currentTeamStage < 3 ? 1 : 0 });
           utils.set(".team-side", { opacity: step === 3 && currentTeamStage < 3 ? 1 : 0, translateY: 0 });
@@ -122,6 +163,17 @@ export default function Home() {
           utils.set(".toss-coin", { opacity: step === 3 && currentTeamStage === 2 ? 1 : 0, scale: 1, rotateY: 0 });
           utils.set(".role-badge", { opacity: step === 3 && currentTeamStage === 2 ? 1 : 0, translateY: 0 });
           utils.set(".player-role-label", { opacity: step === 4 ? 1 : 0, scale: 1 });
+          utils.set(".gameplay-panel", { opacity: step === 5 && (currentGameplayStage === 0 || currentGameplayStage === 4) ? 1 : 0 });
+          utils.set(".goal-token", { opacity: step === 5 && currentGameplayStage === 0 ? 1 : 0, translateY: 0 });
+          utils.set(".play-cue", { opacity: step === 5 && currentGameplayStage === 1 ? 1 : 0, translateY: 0 });
+          utils.set(".score-method", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0, translateY: 0 });
+          utils.set(".dismissal-method", { opacity: step === 5 && currentGameplayStage === 3 ? 1 : 0, scale: 1 });
+          utils.set(".over-ball", { opacity: step === 5 && currentGameplayStage === 4 ? 1 : 0, scale: 1 });
+          utils.set(".play-ball", {
+            opacity: step === 5 && currentGameplayStage >= 1 && currentGameplayStage <= 3 ? 1 : 0,
+            left: currentGameplayStage === 3 ? "50%" : "48.7%",
+            top: currentGameplayStage === 3 ? "27%" : "31%",
+          });
           return;
         }
 
@@ -269,6 +321,144 @@ export default function Home() {
             ease: "out(4)",
           });
         }
+
+        if (step === 5 && currentGameplayStage === 0) {
+          utils.set(".goal-panel", { opacity: 1 });
+          animate(".goal-token", {
+            opacity: [0, 1],
+            translateY: [10, 0],
+            delay: stagger(120),
+            duration: 480,
+            ease: "out(4)",
+          });
+        }
+
+        if (step === 5 && currentGameplayStage === 1) {
+          utils.set(".player-token", { opacity: 1, scale: 1 });
+          animate(".play-cue", {
+            opacity: [0, 1],
+            translateY: [8, 0],
+            delay: stagger(100),
+            duration: 380,
+            ease: "out(3)",
+          });
+          const runDelivery = () => {
+            if (generation !== deliveryGeneration) return;
+            const hitLeft = 18 + Math.random() * 64;
+            const hitTop = 12 + Math.random() * 38;
+
+            createTimeline({
+              onComplete: () => {
+                if (generation === deliveryGeneration) runDelivery();
+              },
+            })
+              .add(".role-bowler", {
+                top: ["79%", "66%"],
+                rotate: [0, 4],
+                duration: 1800,
+                ease: "inOut(2)",
+              }, 0)
+              .add(".bowler-arm", {
+                opacity: 1,
+                rotate: [25, -120, 30],
+                duration: 650,
+                ease: "inOut(3)",
+              }, 1250)
+              .set(".play-ball", {
+                opacity: 1,
+                left: "50%",
+                top: "66%",
+                scale: 1,
+              }, 1800)
+              .add(".play-ball", {
+                left: ["50%", "48.7%"],
+                top: ["66%", "31%"],
+                scale: [1, 0.82],
+                duration: 1400,
+                ease: "inOut(2)",
+              }, 1800)
+              .add(".play-ball", {
+                left: ["48.7%", `${hitLeft}%`],
+                top: ["31%", `${hitTop}%`],
+                scale: [0.82, 1],
+                duration: 1200,
+                ease: "out(2)",
+              }, 3200)
+              .add(".hit-flash", {
+                opacity: [0, 0.75, 0],
+                scale: [0, 1.5, 2],
+                duration: 650,
+                ease: "out(3)",
+              }, 3150)
+              .add(".role-bowler", {
+                top: ["66%", "79%"],
+                rotate: [4, 0],
+                duration: 1800,
+                ease: "inOut(2)",
+              }, 2400)
+              .add(".bowler-arm", {
+                rotate: [30, 25],
+                duration: 500,
+                ease: "out(2)",
+              }, 1900)
+              .add(".play-ball", { opacity: 0, duration: 1200 }, 4400);
+          };
+
+          runDelivery();
+        }
+
+        if (step === 5 && currentGameplayStage === 2) {
+          const angle = Math.random() * Math.PI * 2;
+          const boundaryLeft = 50 + Math.cos(angle) * 42;
+          const boundaryTop = 50 + Math.sin(angle) * 42;
+          utils.set(".player-token", { opacity: 1, scale: 1 });
+          animate(".play-ball", {
+            opacity: [0, 1, 1],
+            left: ["48.7%", `${boundaryLeft}%`],
+            top: ["31%", `${boundaryTop}%`],
+            scale: [0.8, 1.15],
+            delay: 280,
+            duration: 1050,
+            ease: "out(2)",
+          });
+          animate(".score-method", {
+            opacity: [0, 1],
+            translateY: [10, 0],
+            delay: stagger(90, { start: 620 }),
+            duration: 400,
+            ease: "out(3)",
+          });
+        }
+
+        if (step === 5 && currentGameplayStage === 3) {
+          utils.set(".player-token", { opacity: 1, scale: 1 });
+          animate(".play-ball", {
+            opacity: [0, 1, 1],
+            left: ["50%", "50%"],
+            top: ["79%", "27%"],
+            delay: 240,
+            duration: 900,
+            ease: "in(2)",
+          });
+          animate(".dismissal-method", {
+            opacity: [0, 1],
+            scale: [0.86, 1],
+            delay: stagger(85, { start: 700 }),
+            duration: 380,
+            ease: "out(4)",
+          });
+        }
+
+        if (step === 5 && currentGameplayStage === 4) {
+          utils.set(".over-panel", { opacity: 1 });
+          animate(".over-ball", {
+            opacity: [0, 1],
+            scale: [0, 1],
+            delay: stagger(120, { start: 180 }),
+            duration: 360,
+            ease: "out(4)",
+          });
+        }
       });
     });
 
@@ -278,8 +468,8 @@ export default function Home() {
   useEffect(() => {
     setGroundHighlight(null);
     setRoleHighlight(null);
-    scope.current?.methods.showStep(activeStep, teamStage);
-  }, [activeStep, teamStage]);
+    scope.current?.methods.showStep(activeStep, teamStage, gameplayStage);
+  }, [activeStep, teamStage, gameplayStage]);
 
   useEffect(() => {
     const handleArrowKeys = (event: KeyboardEvent) => {
@@ -296,6 +486,8 @@ export default function Home() {
         event.preventDefault();
         if (activeStep === 3 && teamStage < teamStages.length - 1) {
           setTeamStage((current) => current + 1);
+        } else if (activeStep === 5 && gameplayStage < gameplayStages.length - 1) {
+          setGameplayStage((current) => current + 1);
         } else {
           setActiveStep((current) => Math.min(steps.length - 1, current + 1));
         }
@@ -305,6 +497,8 @@ export default function Home() {
         event.preventDefault();
         if (activeStep === 3 && teamStage > 0) {
           setTeamStage((current) => current - 1);
+        } else if (activeStep === 5 && gameplayStage > 0) {
+          setGameplayStage((current) => current - 1);
         } else {
           setActiveStep((current) => Math.max(0, current - 1));
         }
@@ -313,16 +507,21 @@ export default function Home() {
 
     window.addEventListener("keydown", handleArrowKeys);
     return () => window.removeEventListener("keydown", handleArrowKeys);
-  }, [activeStep, teamStage]);
+  }, [activeStep, teamStage, gameplayStage]);
 
   const goTo = (index: number) => {
     const nextStep = Math.max(0, Math.min(steps.length - 1, index));
     if (nextStep === 3 && activeStep !== 3) setTeamStage(0);
+    if (nextStep === 5 && activeStep !== 5) setGameplayStage(0);
     setActiveStep(nextStep);
   };
   const goForward = () => {
     if (activeStep === 3 && teamStage < teamStages.length - 1) {
       setTeamStage((current) => current + 1);
+      return;
+    }
+    if (activeStep === 5 && gameplayStage < gameplayStages.length - 1) {
+      setGameplayStage((current) => current + 1);
       return;
     }
     setActiveStep((current) => Math.min(steps.length - 1, current + 1));
@@ -332,13 +531,21 @@ export default function Home() {
       setTeamStage((current) => current - 1);
       return;
     }
+    if (activeStep === 5 && gameplayStage > 0) {
+      setGameplayStage((current) => current - 1);
+      return;
+    }
     setActiveStep((current) => Math.max(0, current - 1));
   };
-  const step = activeStep === 3 ? { ...steps[3], ...teamStages[teamStage] } : steps[activeStep];
-  const lessonComplete = activeStep === steps.length - 1;
+  const step = activeStep === 3
+    ? { ...steps[3], ...teamStages[teamStage] }
+    : activeStep === 5
+      ? { ...steps[5], ...gameplayStages[gameplayStage] }
+      : steps[activeStep];
+  const lessonComplete = activeStep === steps.length - 1 && gameplayStage === gameplayStages.length - 1;
 
   return (
-    <div className={`lesson lesson-step-${activeStep + 1} team-stage-${teamStage + 1}`} ref={root}>
+    <div className={`lesson lesson-step-${activeStep + 1} team-stage-${teamStage + 1} gameplay-stage-${gameplayStage + 1}`} ref={root}>
       <header className="lesson-header">
         <a className="brand" href="#lesson" aria-label="Crease lesson home">
           <span className="brand-mark" aria-hidden="true">C</span>
@@ -349,7 +556,7 @@ export default function Home() {
 
       <main className="lesson-canvas" id="lesson">
         <section className="copy-zone" aria-live="polite">
-          <div className="step-copy" key={`${activeStep}-${teamStage}`}>
+          <div className="step-copy" key={`${activeStep}-${teamStage}-${gameplayStage}`}>
             <p className="eyebrow">{step.number} / {String(steps.length).padStart(2, "0")}</p>
             <h1>{step.title}</h1>
             <p className="step-body">{step.body}</p>
@@ -385,10 +592,13 @@ export default function Home() {
                   aria-label={role === "wicketkeeper" ? "Wicketkeeper" : role === "bowler" ? "Bowler" : `Fielder ${index}`}
                 >
                   <span>{index + 1}</span>
+                  {role === "bowler" ? <i className="bowler-arm" aria-hidden="true" /> : null}
                 </div>
               ))}
               <div className="player-token batter batter-north role-batsmen"><span>A</span></div>
-                <div className="player-token batter batter-south role-batsmen"><span>B</span></div>
+              <div className="player-token batter batter-south role-batsmen"><span>B</span></div>
+              <div className="play-ball" aria-hidden="true" />
+              <div className="hit-flash" aria-hidden="true" />
               </div>
             </div>
           </div>
@@ -457,6 +667,45 @@ export default function Home() {
                 <i />{label}
               </button>
             ))}
+          </div>
+
+          <div className="play-cue-layer" aria-hidden={activeStep !== 5 || gameplayStage !== 1}>
+            <div className="play-cue batsman-play-cue"><i />Batsman hits here</div>
+            <div className="play-cue bowler-play-cue"><i />Bowler runs in</div>
+          </div>
+
+          <div className="gameplay-panel goal-panel" aria-hidden={activeStep !== 5 || gameplayStage !== 0}>
+            <span className="goal-kicker goal-token">Goal</span>
+            <div className="goal-equation">
+              <b className="goal-token">Your runs</b>
+              <i className="goal-token">&gt;</i>
+              <b className="goal-token">Their runs</b>
+            </div>
+          </div>
+
+          <div className="score-methods" aria-hidden={activeStep !== 5 || gameplayStage !== 2}>
+            {[
+              ["Run", "Swap ends"],
+              ["4", "Reaches boundary"],
+              ["6", "Clears boundary"],
+              ["Extra", "No bat needed"],
+            ].map(([score, detail]) => (
+              <div className="score-method" key={score}><b>{score}</b><span>{detail}</span></div>
+            ))}
+          </div>
+
+          <div className="dismissal-methods" aria-hidden={activeStep !== 5 || gameplayStage !== 3}>
+            {["Bowled", "Caught", "LBW", "Run out", "Stumped"].map((method) => (
+              <span className="dismissal-method" key={method}>{method}</span>
+            ))}
+          </div>
+
+          <div className="gameplay-panel over-panel" aria-hidden={activeStep !== 5 || gameplayStage !== 4}>
+            <span className="over-kicker">1 over</span>
+            <div className="over-balls" aria-label="Six legal balls">
+              {Array.from({ length: 6 }, (_, index) => <i className="over-ball" key={index}>{index + 1}</i>)}
+            </div>
+            <strong>6 legal balls</strong>
           </div>
         </section>
       </main>
