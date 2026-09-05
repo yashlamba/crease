@@ -11,7 +11,6 @@ const eslintConfig = defineConfig([
   globalIgnores([
     ".next/**",
     ".vinext/**",
-    ".wrangler/**",
     "dist/**",
     "out/**",
     "build/**",
@@ -29,7 +28,6 @@ const eslintConfig = defineConfig([
       globals: {
         ...globals.browser,
         ...globals.node,
-        ...globals.serviceworker,
       },
     },
     settings: {
