@@ -2,6 +2,8 @@
 
 An interactive, animated introduction to cricket.
 
+This project is mostly AI-generated.
+
 Requires Node.js 22.13 or newer and npm.
 
 ```bash

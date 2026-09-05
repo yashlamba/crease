@@ -1,0 +1,50 @@
+name: Publish to gh-pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+      - name: Build static site
+        run: |
+          npm run build
+          mv "dist/client${BASE_PATH}/_next" dist/client/_next
+          rmdir "dist/client${BASE_PATH}"
+        env:
+          STATIC_EXPORT: "true"
+          BASE_PATH: /${{ github.event.repository.name }}
+
+      - name: Verify static export
+        run: node --test tests/static-export.test.mjs
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}
+
+      - name: Push build to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./dist/client
