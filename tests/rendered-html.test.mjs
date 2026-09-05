@@ -54,6 +54,17 @@ test("server-renders the cricket basics lesson", async () => {
   assert.match(html, /Penalty/);
   assert.match(html, /Bowled/);
   assert.match(html, /Out — bowled/);
+  assert.match(html, />Caught</);
+  assert.match(html, />LBW</);
+  assert.match(html, />Run out</);
+  assert.match(html, />Stumped</);
   assert.match(html, /6 legal balls/);
+  assert.match(html, /Extra balls/);
+  assert.match(html, /Change ends/);
+  assert.match(html, /Runs \/ wickets/);
+  assert.match(html, /154/);
+  assert.match(html, /18\.2/);
+  assert.match(html, /Target/);
+  assert.match(html, /Need/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|react-loading-skeleton/i);
 });

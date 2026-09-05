@@ -91,6 +91,7 @@ h1 { margin: 0; color: var(--white); font: 400 clamp(42px, 4.3vw, 64px)/.95 Geor
 .hit-flash { position: absolute; z-index: 8; top: 31%; left: 48.7%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 2px solid rgba(244,248,246,.7); border-radius: 50%; opacity: 0; }
 .score-boundary-flash { position: absolute; z-index: 12; inset: 5.5%; border: 3px solid var(--blue); border-radius: 50%; box-shadow: 0 0 25px rgba(112,207,255,.72); opacity: 0; pointer-events: none; }
 .extra-marker { position: absolute; z-index: 13; top: 22%; left: 57%; padding: 7px 10px; border: 1px solid var(--ball); border-radius: 999px; background: rgba(4,20,16,.94); color: var(--ball); box-shadow: 0 8px 22px rgba(0,0,0,.3); font-size: 8px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; opacity: 0; white-space: nowrap; }
+.lbw-path { position: absolute; z-index: 9; top: 27%; left: calc(50% - 1px); width: 2px; height: 5%; background: repeating-linear-gradient(to bottom, var(--ball) 0 4px, transparent 4px 7px); filter: drop-shadow(0 0 5px var(--ball)); transform: scaleY(0); transform-origin: top; opacity: 0; }
 .wicket-marker { position: absolute; z-index: 14; top: 18%; left: 50%; padding: 8px 12px; border: 1px solid var(--ball); border-radius: 999px; background: rgba(4,20,16,.94); color: var(--ball); box-shadow: 0 8px 24px rgba(0,0,0,.34); font-size: 8px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; transform: translateX(-50%); opacity: 0; white-space: nowrap; }
 .bowler-arm { position: absolute; z-index: -1; top: -9px; right: 1px; display: block; width: 4px; height: 17px; border-radius: 4px; background: var(--team-b); box-shadow: 0 0 0 1px rgba(8,17,15,.25); transform-origin: 50% 100%; opacity: 0; }
 
@@ -183,12 +184,44 @@ h1 { margin: 0; color: var(--white); font: 400 clamp(42px, 4.3vw, 64px)/.95 Geor
 .score-extra-method b { font-size: 13px; }
 .dismissal-methods { width: min(42vw, 520px); }
 .dismissal-methods { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; }
-.dismissal-method { padding: 9px 13px; border: 1px solid rgba(240,111,114,.38); border-radius: 999px; background: rgba(5,18,15,.92); color: var(--white); font-size: 8px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; opacity: 0; backdrop-filter: blur(12px); }
+.dismissal-method { padding: 9px 13px; appearance: none; border: 1px solid rgba(240,111,114,.38); border-radius: 999px; background: rgba(5,18,15,.92); color: var(--white); font: inherit; font-size: 8px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; cursor: pointer; opacity: 0; backdrop-filter: blur(12px); }
 .dismissal-method.is-active { border-color: var(--ball); background: rgba(240,111,114,.14); color: var(--ball); box-shadow: 0 0 0 2px rgba(240,111,114,.08), 0 10px 24px rgba(0,0,0,.22); }
+.dismissal-method:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
 
+.gameplay-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-bottom: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.gameplay-tabs button { min-width: 0; padding: 7px 5px; appearance: none; border: 1px solid transparent; border-radius: 999px; background: rgba(255,255,255,.04); color: var(--muted); font: inherit; font-size: 7px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; cursor: pointer; }
+.gameplay-tabs button.is-active { border-color: rgba(112,207,255,.48); background: rgba(112,207,255,.13); color: var(--blue); }
+.gameplay-tabs button:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
+.over-stage-content { min-height: 144px; }
 .over-panel strong { display: block; margin-top: 21px; color: var(--muted); font-size: 9px; letter-spacing: .13em; text-transform: uppercase; }
 .over-balls { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .over-ball { display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; background: var(--ball); color: var(--ink); box-shadow: 0 6px 15px rgba(0,0,0,.28); font-style: normal; font-size: 9px; font-weight: 900; opacity: 0; }
+.over-deliveries { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 7px; }
+.over-delivery { display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; background: var(--ball); color: var(--ink); font-style: normal; font-size: 8px; font-weight: 900; }
+.over-delivery.is-extra { border: 1px dashed var(--blue); background: rgba(112,207,255,.12); color: var(--blue); }
+.end-switch { display: grid; grid-template-columns: 64px 1fr 64px; align-items: center; gap: 14px; }
+.end-label { display: grid; place-items: center; aspect-ratio: 1; border: 1px solid rgba(112,207,255,.34); border-radius: 50%; color: var(--blue); font-size: 8px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.end-route { display: grid; grid-template-columns: 1fr auto 1fr auto; align-items: center; gap: 7px; }
+.end-route i { padding: 8px 5px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--white); font-style: normal; font-size: 7px; font-weight: 900; text-transform: uppercase; }
+.end-route span { color: var(--ball); font-size: 17px; }
+.end-switch strong { grid-column: 1 / -1; }
+
+.score-reader-panel { width: min(42vw, 520px); }
+.scoreboard-card { text-align: left; }
+.scoreboard-team { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 11px; border-bottom: 1px solid var(--line); }
+.scoreboard-team b { color: var(--white); font: 700 17px Georgia, serif; }.scoreboard-team span { color: var(--muted); font-size: 7px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.scoreboard-line { display: grid; grid-template-columns: auto 13px auto 1fr; align-items: end; gap: 7px; padding: 17px 0; }
+.scoreboard-line > span { padding: 7px 9px; border: 1px solid transparent; border-radius: 10px; color: var(--white); font: 700 31px Georgia, serif; transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease; }
+.scoreboard-line i { align-self: center; color: var(--muted); font: italic 700 22px Georgia, serif; }
+.scoreboard-line small { display: block; margin-top: 2px; color: var(--muted); font: 900 6px Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.score-overs { align-self: center; justify-self: end; padding: 9px 10px; border: 1px solid transparent; border-radius: 9px; color: var(--muted); font: 700 19px Georgia, serif; transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease; }
+.score-overs small { display: inline; color: inherit; font-size: 7px; }
+.score-reading-stage-1 .score-runs, .score-reading-stage-1 .score-wickets, .score-reading-stage-2 .score-overs { border-color: rgba(112,207,255,.46); background: rgba(112,207,255,.12); color: var(--blue); }
+.score-over-breakdown, .chase-line { display: none; min-height: 44px; border-top: 1px solid var(--line); color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+.score-reading-stage-2 .score-over-breakdown { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 9px; padding-top: 14px; text-align: center; }
+.score-over-breakdown i { color: var(--blue); font-style: normal; }
+.score-reading-stage-3 .chase-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; }
+.chase-line i { width: 1px; align-self: stretch; background: var(--line); }.chase-line b { color: var(--blue); font-size: 10px; }
 
 .lesson-index { position: absolute; z-index: 30; top: 96px; right: 30px; bottom: 30px; width: 340px; display: flex; flex-direction: column; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: rgba(5,18,15,.82); box-shadow: 0 24px 70px rgba(0,0,0,.34); backdrop-filter: blur(18px); }
 .index-heading { display: flex; align-items: center; justify-content: space-between; padding-bottom: 21px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }

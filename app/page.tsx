@@ -55,6 +55,7 @@ const gameplayStages = [
   { title: "Scoring", body: "Run between the wickets, reach the boundary, clear it, or receive extras." },
   { title: "Taking wickets", body: "A wicket ends a batsman’s turn. These are the most common ways to take one." },
   { title: "Overs", body: "Six legal balls make one over. Then another bowler delivers from the opposite end." },
+  { title: "Reading the score", body: "A cricket score combines runs, wickets and overs in a compact line." },
 ];
 
 const scoringStages = [
@@ -68,10 +69,25 @@ const scoringStages = [
   { key: "penalty", category: "extra", label: "Penalty", detail: "+5 runs", marker: "+5 penalty", title: "Penalty runs", body: "The umpire can award five penalty runs when the other team breaks certain rules." },
 ] as const;
 
-const bowledStage = {
-  title: "Bowled",
-  body: "The batsman is out when a legal delivery hits the wicket and puts it down.",
-};
+const dismissalStages = [
+  { key: "bowled", label: "Bowled", marker: "Out — bowled", title: "Bowled", body: "The batsman is out when a legal delivery hits the wicket and puts it down." },
+  { key: "caught", label: "Caught", marker: "Out — caught", title: "Caught", body: "The batsman is out when a fair delivery touches the bat and a fielder catches it before it touches the ground." },
+  { key: "lbw", label: "LBW", marker: "Out — LBW", title: "LBW", body: "The batsman may be out when the ball hits the body without first touching the bat and would otherwise have hit the wicket." },
+  { key: "run-out", label: "Run out", marker: "Out — run out", title: "Run out", body: "A batter is run out when a fielder breaks their wicket while they are outside their ground." },
+  { key: "stumped", label: "Stumped", marker: "Out — stumped", title: "Stumped", body: "The striker is stumped when the wicketkeeper breaks the wicket while they are outside their ground and not attempting a run." },
+] as const;
+
+const overStages = [
+  { key: "six-balls", label: "6 balls", title: "Six legal balls", body: "An over ends after six legal deliveries." },
+  { key: "extra-balls", label: "Extra balls", title: "Extra deliveries", body: "Wides and no-balls add runs but do not count among the six legal balls, so an over can contain more than six deliveries." },
+  { key: "change-ends", label: "Change ends", title: "Change ends", body: "Overs alternate between the two ends of the pitch, and one bowler cannot bowl two overs in a row." },
+] as const;
+
+const scoreReadingStages = [
+  { key: "runs-wickets", label: "Runs / wickets", title: "Runs and wickets", body: "Most scoreboards show runs first and wickets lost second. 154/3 means 154 runs for 3 wickets." },
+  { key: "over-notation", label: "Over notation", title: "Over notation", body: "18.2 ov means 18 completed overs plus 2 balls into the next over. The .2 is a ball count, not a decimal." },
+  { key: "chase", label: "The chase", title: "Reading a chase", body: "Target 181 is the score needed to win. Need 27 from 10 balls shows what the batting team still requires." },
+] as const;
 
 const fielders = [
   { left: 50, top: 18, role: "wicketkeeper" },
@@ -94,6 +110,9 @@ export default function Home() {
   const [teamStage, setTeamStage] = useState(0);
   const [gameplayStage, setGameplayStage] = useState(0);
   const [scoringStage, setScoringStage] = useState(0);
+  const [dismissalStage, setDismissalStage] = useState(0);
+  const [overStage, setOverStage] = useState(0);
+  const [scoreReadingStage, setScoreReadingStage] = useState(0);
   const [groundHighlight, setGroundHighlight] = useState<"boundary" | "circle" | "pitch" | null>(null);
   const [roleHighlight, setRoleHighlight] = useState<"wicketkeeper" | "batsmen" | "fielder" | "bowler" | null>(null);
 
@@ -103,7 +122,7 @@ export default function Home() {
     scope.current = createScope({ root }).add((self) => {
       let deliveryGeneration = 0;
 
-      self.add("showStep", (step: number, currentTeamStage: number, currentGameplayStage: number, currentScoringStage: number) => {
+      self.add("showStep", (step: number, currentTeamStage: number, currentGameplayStage: number, currentScoringStage: number, currentDismissalStage: number, currentOverStage: number, currentScoreReadingStage: number) => {
         deliveryGeneration += 1;
         const generation = deliveryGeneration;
         const gameFieldVisible = step === 5 && currentGameplayStage >= 1 && currentGameplayStage <= 3;
@@ -138,8 +157,12 @@ export default function Home() {
           ".score-divider",
           ".wicket-bail",
           ".wicket-marker",
+          ".lbw-path",
           ".dismissal-method",
           ".over-ball",
+          ".over-delivery",
+          ".end-switch-piece",
+          ".score-read-piece",
         ].forEach((target) => utils.remove(target));
 
         utils.set(".field-shell", {
@@ -176,8 +199,12 @@ export default function Home() {
         utils.set(".stumps-north i", { translateX: 0, translateY: 0, rotate: 0 });
         utils.set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 });
         utils.set(".wicket-marker", { opacity: 0, scale: 0.78, translateY: 8 });
+        utils.set(".lbw-path", { opacity: 0, scaleY: 0 });
         utils.set(".dismissal-method", { opacity: 0, scale: 0.86 });
         utils.set(".over-ball", { opacity: 0, scale: 0 });
+        utils.set(".over-delivery", { opacity: 0, translateY: 8 });
+        utils.set(".end-switch-piece", { opacity: 0, scale: 0.86 });
+        utils.set(".score-read-piece", { opacity: 0, translateY: 8 });
 
         if (prefersReducedMotion) {
           utils.set(".step-copy", { opacity: 1, translateY: 0 });
@@ -195,17 +222,21 @@ export default function Home() {
           utils.set(".toss-coin", { opacity: step === 3 && currentTeamStage === 2 ? 1 : 0, scale: 1, rotateY: 0 });
           utils.set(".role-badge", { opacity: step === 3 && currentTeamStage === 2 ? 1 : 0, translateY: 0 });
           utils.set(".player-role-label", { opacity: step === 4 ? 1 : 0, scale: 1 });
-          utils.set(".gameplay-panel", { opacity: step === 5 && (currentGameplayStage === 0 || currentGameplayStage === 4) ? 1 : 0 });
+          utils.set(".gameplay-panel", { opacity: step === 5 && (currentGameplayStage === 0 || currentGameplayStage === 4 || currentGameplayStage === 5) ? 1 : 0 });
           utils.set(".goal-token", { opacity: step === 5 && currentGameplayStage === 0 ? 1 : 0, translateY: 0 });
           utils.set(".play-cue", { opacity: step === 5 && currentGameplayStage === 1 ? 1 : 0, translateY: 0 });
           utils.set(".score-method", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0, translateY: 0, scale: 1 });
           utils.set(".score-category-label", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0 });
           utils.set(".score-divider", { opacity: step === 5 && currentGameplayStage === 2 ? 1 : 0 });
           utils.set(".wicket-marker", { opacity: step === 5 && currentGameplayStage === 3 ? 1 : 0, scale: 1, translateY: 0 });
+          utils.set(".lbw-path", { opacity: step === 5 && currentGameplayStage === 3 && currentDismissalStage === 2 ? 0.9 : 0, scaleY: 1 });
           utils.set(".score-boundary-flash", { opacity: step === 5 && currentGameplayStage === 2 && (currentScoringStage === 1 || currentScoringStage === 2) ? 0.65 : 0, scale: 1 });
           utils.set(".extra-marker", { opacity: step === 5 && currentGameplayStage === 2 && currentScoringStage >= 3 ? 1 : 0, scale: 1, translateY: 0 });
           utils.set(".dismissal-method", { opacity: step === 5 && currentGameplayStage === 3 ? 1 : 0, scale: 1 });
           utils.set(".over-ball", { opacity: step === 5 && currentGameplayStage === 4 ? 1 : 0, scale: 1 });
+          utils.set(".over-delivery", { opacity: step === 5 && currentGameplayStage === 4 ? 1 : 0, translateY: 0 });
+          utils.set(".end-switch-piece", { opacity: step === 5 && currentGameplayStage === 4 ? 1 : 0, scale: 1 });
+          utils.set(".score-read-piece", { opacity: step === 5 && currentGameplayStage === 5 ? 1 : 0, translateY: 0 });
           utils.set(".play-ball", {
             opacity: step === 5 && currentGameplayStage >= 1 && currentGameplayStage <= 3 ? 1 : 0,
             left: currentGameplayStage === 3 ? "50%" : "48.7%",
@@ -601,24 +632,36 @@ export default function Home() {
             ease: "out(4)",
           });
 
-          const runBowledAnimation = () => {
+          const runDismissalAnimation = () => {
             if (generation !== deliveryGeneration) return;
 
-            createTimeline({
+            const catchingOptions = [1, 2, 3, 4, 5, 6];
+            const catchingIndex = catchingOptions[Math.floor(Math.random() * catchingOptions.length)];
+            const catchingFielder = fielders[catchingIndex];
+            const catchingSelector = `.fielding-player-${catchingIndex}`;
+
+            const timeline = createTimeline({
               onComplete: () => {
-                if (generation === deliveryGeneration) runBowledAnimation();
+                if (generation === deliveryGeneration) runDismissalAnimation();
               },
             })
               .set(".play-ball", { opacity: 0, left: "50%", top: "66%", scale: 1 }, 0)
               .set(".role-bowler", { top: "79%", rotate: 0 }, 0)
               .set(".bowler-arm", { opacity: 0, rotate: 25 }, 0)
               .set(".stumps-north i", { translateX: 0, translateY: 0, rotate: 0 }, 0)
+              .set(".stumps-south i", { translateX: 0, translateY: 0, rotate: 0 }, 0)
               .set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 }, 0)
               .set(".wicket-marker", { opacity: 0, scale: 0.78, translateY: 8 }, 0)
-              .add(".role-bowler", {
+              .set(".lbw-path", { opacity: 0, scaleY: 0 }, 0)
+              .set(".batter-north", { top: "31%", left: "48.7%", scale: 1 }, 0)
+              .set(".batter-south", { top: "69%", left: "51.3%", scale: 1 }, 0);
+
+            if (currentDismissalStage !== 3) {
+              timeline
+                .add(".role-bowler", {
                 top: ["79%", "66%"],
                 rotate: [0, 4],
-                duration: 1600,
+                duration: 1500,
                 ease: "inOut(2)",
               }, 0)
               .add(".bowler-arm", {
@@ -626,46 +669,130 @@ export default function Home() {
                 rotate: [25, -120, 30],
                 duration: 650,
                 ease: "inOut(3)",
-              }, 1050)
-              .set(".play-ball", { opacity: 1 }, 1600)
-              .add(".play-ball", {
-                left: ["50%", "50%"],
-                top: ["66%", "27%"],
-                scale: [1, 0.82],
-                duration: 1250,
-                ease: "in(2)",
-              }, 1600)
+              }, 950)
+              .set(".play-ball", { opacity: 1 }, 1500)
               .add(".role-bowler", {
                 top: ["66%", "79%"],
                 rotate: [4, 0],
                 duration: 1700,
                 ease: "inOut(2)",
-              }, 2200)
-              .add(".bowler-arm", { rotate: [30, 25], duration: 500, ease: "out(2)" }, 1700)
-              .set(".play-ball", { opacity: 0 }, 2850)
-              .add(".stumps-north i:nth-child(1)", { translateX: -5, translateY: -3, rotate: -28, duration: 430, ease: "out(4)" }, 2800)
-              .add(".stumps-north i:nth-child(2)", { translateY: -5, rotate: 18, duration: 430, ease: "out(4)" }, 2800)
-              .add(".stumps-north i:nth-child(3)", { translateX: 5, translateY: -2, rotate: 32, duration: 430, ease: "out(4)" }, 2800)
-              .add(".stumps-north .bail-left", { opacity: [1, 0], translateX: -12, translateY: -10, rotate: -55, duration: 520, ease: "out(3)" }, 2760)
-              .add(".stumps-north .bail-right", { opacity: [1, 0], translateX: 12, translateY: -9, rotate: 65, duration: 520, ease: "out(3)" }, 2760)
-              .add(".wicket-marker", { opacity: [0, 1], scale: [0.78, 1], translateY: [8, 0], duration: 380, ease: "out(4)" }, 2920)
-              .add(".wicket-marker", { opacity: [1, 0], duration: 300, ease: "in(2)" }, 4050)
-              .set(".stumps-north i", { translateX: 0, translateY: 0, rotate: 0 }, 4400)
-              .set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 }, 4400)
-              .add(".wicket-marker", { opacity: 0, duration: 700 }, 4400);
+              }, 2050)
+              .add(".bowler-arm", { rotate: [30, 25], duration: 500, ease: "out(2)" }, 1550);
+            }
+
+            if (currentDismissalStage === 0) {
+              timeline
+                .add(".play-ball", { left: ["50%", "50%"], top: ["66%", "27%"], scale: [1, 0.82], duration: 1250, ease: "in(2)" }, 1500)
+                .set(".play-ball", { opacity: 0 }, 2750)
+                .add(".stumps-north i:nth-child(1)", { translateX: -5, translateY: -3, rotate: -28, duration: 430, ease: "out(4)" }, 2700)
+                .add(".stumps-north i:nth-child(2)", { translateY: -5, rotate: 18, duration: 430, ease: "out(4)" }, 2700)
+                .add(".stumps-north i:nth-child(3)", { translateX: 5, translateY: -2, rotate: 32, duration: 430, ease: "out(4)" }, 2700)
+                .add(".stumps-north .bail-left", { opacity: [1, 0], translateX: -12, translateY: -10, rotate: -55, duration: 520, ease: "out(3)" }, 2660)
+                .add(".stumps-north .bail-right", { opacity: [1, 0], translateX: 12, translateY: -9, rotate: 65, duration: 520, ease: "out(3)" }, 2660)
+                .add(".wicket-marker", { opacity: [0, 1], scale: [0.78, 1], translateY: [8, 0], duration: 380, ease: "out(4)" }, 2820)
+                .add(".wicket-marker", { opacity: [1, 0], duration: 300, ease: "in(2)" }, 3950)
+                .set(".stumps-north i", { translateX: 0, translateY: 0, rotate: 0 }, 4300)
+                .set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 }, 4300)
+                .add(".wicket-marker", { opacity: 0, duration: 700 }, 4300);
+            } else if (currentDismissalStage === 1) {
+              timeline
+                .add(".play-ball", { left: ["50%", "48.7%"], top: ["66%", "31%"], scale: [1, 0.82], duration: 1150, ease: "inOut(2)" }, 1500)
+                .add(".hit-flash", { opacity: [0, 0.75, 0], scale: [0, 1.5, 2], duration: 520, ease: "out(3)" }, 2580)
+                .add(".play-ball", { left: ["48.7%", `${catchingFielder.left}%`], top: ["31%", `${catchingFielder.top}%`], scale: [0.82, 1], duration: 1200, ease: "out(2)" }, 2650)
+                .add(catchingSelector, { scale: [1, 1.45, 1.12], duration: 520, ease: "out(4)" }, 3770)
+                .set(".play-ball", { opacity: 0 }, 3850)
+                .add(".wicket-marker", { opacity: [0, 1], scale: [0.78, 1], translateY: [8, 0], duration: 380, ease: "out(4)" }, 3920)
+                .add(".wicket-marker", { opacity: [1, 0], duration: 300, ease: "in(2)" }, 5000)
+                .add(".wicket-marker", { opacity: 0, duration: 700 }, 5300);
+            } else if (currentDismissalStage === 2) {
+              timeline
+                .add(".play-ball", { left: ["50%", "48.7%"], top: ["66%", "31%"], scale: [1, 0.84], duration: 1250, ease: "inOut(2)" }, 1500)
+                .add(".batter-north", { scale: [1, 1.32, 1], duration: 480, ease: "out(4)" }, 2670)
+                .set(".play-ball", { opacity: 0 }, 2750)
+                .add(".lbw-path", { opacity: [0, 0.9], scaleY: [0, 1], duration: 520, ease: "out(3)" }, 2760)
+                .add(".wicket-marker", { opacity: [0, 1], scale: [0.78, 1], translateY: [8, 0], duration: 380, ease: "out(4)" }, 3200)
+                .add(".wicket-marker", { opacity: [1, 0], duration: 300, ease: "in(2)" }, 4300)
+                .add(".lbw-path", { opacity: [0.9, 0], duration: 300, ease: "in(2)" }, 4300)
+                .add(".wicket-marker", { opacity: 0, duration: 700 }, 4600);
+            } else if (currentDismissalStage === 3) {
+              timeline
+                .set(".play-ball", { opacity: 1, left: "33%", top: "55%", scale: 1 }, 250)
+                .add(".fielding-player-5", { scale: [1, 1.4, 1], duration: 480, ease: "out(4)" }, 200)
+                .add(".batter-north", { top: ["31%", "65%"], duration: 1450, ease: "inOut(2)" }, 250)
+                .add(".batter-south", { top: ["69%", "38%"], duration: 1450, ease: "inOut(2)" }, 250)
+                .add(".play-ball", { left: ["33%", "50%"], top: ["55%", "73%"], scale: [1, 0.84], duration: 900, ease: "in(2)" }, 650)
+                .set(".play-ball", { opacity: 0 }, 1550)
+                .add(".stumps-south i:nth-child(1)", { translateX: -5, translateY: 3, rotate: -28, duration: 430, ease: "out(4)" }, 1500)
+                .add(".stumps-south i:nth-child(2)", { translateY: 5, rotate: 18, duration: 430, ease: "out(4)" }, 1500)
+                .add(".stumps-south i:nth-child(3)", { translateX: 5, translateY: 2, rotate: 32, duration: 430, ease: "out(4)" }, 1500)
+                .add(".stumps-south .bail-left", { opacity: [1, 0], translateX: -12, translateY: 10, rotate: -55, duration: 520, ease: "out(3)" }, 1460)
+                .add(".stumps-south .bail-right", { opacity: [1, 0], translateX: 12, translateY: 9, rotate: 65, duration: 520, ease: "out(3)" }, 1460)
+                .add(".wicket-marker", { opacity: [0, 1], scale: [0.78, 1], translateY: [8, 0], duration: 380, ease: "out(4)" }, 1650)
+                .add(".wicket-marker", { opacity: [1, 0], duration: 300, ease: "in(2)" }, 2850)
+                .set(".stumps-south i", { translateX: 0, translateY: 0, rotate: 0 }, 3200)
+                .set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 }, 3200)
+                .add(".wicket-marker", { opacity: 0, duration: 750 }, 3200);
+            } else {
+              timeline
+                .add(".batter-north", { top: ["31%", "38%"], duration: 900, ease: "inOut(2)" }, 1150)
+                .add(".play-ball", { left: ["50%", "54%"], top: ["66%", "31%"], scale: [1, 0.84], duration: 1200, ease: "inOut(2)" }, 1500)
+                .add(".play-ball", { left: ["54%", "50%"], top: ["31%", "18%"], duration: 520, ease: "out(2)" }, 2700)
+                .add(".fielding-player-0", { scale: [1, 1.4, 1], duration: 450, ease: "out(4)" }, 3150)
+                .add(".play-ball", { left: ["50%", "50%"], top: ["18%", "27%"], duration: 430, ease: "in(2)" }, 3260)
+                .set(".play-ball", { opacity: 0 }, 3690)
+                .add(".stumps-north i:nth-child(1)", { translateX: -5, translateY: -3, rotate: -28, duration: 430, ease: "out(4)" }, 3640)
+                .add(".stumps-north i:nth-child(2)", { translateY: -5, rotate: 18, duration: 430, ease: "out(4)" }, 3640)
+                .add(".stumps-north i:nth-child(3)", { translateX: 5, translateY: -2, rotate: 32, duration: 430, ease: "out(4)" }, 3640)
+                .add(".stumps-north .bail-left", { opacity: [1, 0], translateX: -12, translateY: -10, rotate: -55, duration: 520, ease: "out(3)" }, 3600)
+                .add(".stumps-north .bail-right", { opacity: [1, 0], translateX: 12, translateY: -9, rotate: 65, duration: 520, ease: "out(3)" }, 3600)
+                .add(".wicket-marker", { opacity: [0, 1], scale: [0.78, 1], translateY: [8, 0], duration: 380, ease: "out(4)" }, 3780)
+                .add(".wicket-marker", { opacity: [1, 0], duration: 300, ease: "in(2)" }, 4900)
+                .set(".stumps-north i", { translateX: 0, translateY: 0, rotate: 0 }, 5250)
+                .set(".wicket-bail", { opacity: 1, translateX: 0, translateY: 0, rotate: 0 }, 5250)
+                .add(".wicket-marker", { opacity: 0, duration: 700 }, 5250);
+            }
           };
 
-          runBowledAnimation();
+          runDismissalAnimation();
         }
 
         if (step === 5 && currentGameplayStage === 4) {
           utils.set(".over-panel", { opacity: 1 });
-          animate(".over-ball", {
+          if (currentOverStage === 0) {
+            animate(".over-ball", {
+              opacity: [0, 1],
+              scale: [0, 1],
+              delay: stagger(120, { start: 180 }),
+              duration: 360,
+              ease: "out(4)",
+            });
+          } else if (currentOverStage === 1) {
+            animate(".over-delivery", {
+              opacity: [0, 1],
+              translateY: [8, 0],
+              delay: stagger(100, { start: 150 }),
+              duration: 360,
+              ease: "out(3)",
+            });
+          } else {
+            animate(".end-switch-piece", {
+              opacity: [0, 1],
+              scale: [0.86, 1],
+              delay: stagger(130, { start: 160 }),
+              duration: 420,
+              ease: "out(4)",
+            });
+          }
+        }
+
+        if (step === 5 && currentGameplayStage === 5) {
+          utils.set(".score-reader-panel", { opacity: 1 });
+          animate(".score-read-piece", {
             opacity: [0, 1],
-            scale: [0, 1],
-            delay: stagger(120, { start: 180 }),
-            duration: 360,
-            ease: "out(4)",
+            translateY: [8, 0],
+            delay: stagger(90, { start: 120 }),
+            duration: 420,
+            ease: "out(3)",
           });
         }
       });
@@ -677,8 +804,8 @@ export default function Home() {
   useEffect(() => {
     setGroundHighlight(null);
     setRoleHighlight(null);
-    scope.current?.methods.showStep(activeStep, teamStage, gameplayStage, scoringStage);
-  }, [activeStep, teamStage, gameplayStage, scoringStage]);
+    scope.current?.methods.showStep(activeStep, teamStage, gameplayStage, scoringStage, dismissalStage, overStage, scoreReadingStage);
+  }, [activeStep, teamStage, gameplayStage, scoringStage, dismissalStage, overStage, scoreReadingStage]);
 
   useEffect(() => {
     const handleArrowKeys = (event: KeyboardEvent) => {
@@ -697,8 +824,17 @@ export default function Home() {
           setTeamStage((current) => current + 1);
         } else if (activeStep === 5 && gameplayStage === 2 && scoringStage < scoringStages.length - 1) {
           setScoringStage((current) => current + 1);
+        } else if (activeStep === 5 && gameplayStage === 3 && dismissalStage < dismissalStages.length - 1) {
+          setDismissalStage((current) => current + 1);
+        } else if (activeStep === 5 && gameplayStage === 4 && overStage < overStages.length - 1) {
+          setOverStage((current) => current + 1);
+        } else if (activeStep === 5 && gameplayStage === 5 && scoreReadingStage < scoreReadingStages.length - 1) {
+          setScoreReadingStage((current) => current + 1);
         } else if (activeStep === 5 && gameplayStage < gameplayStages.length - 1) {
           if (gameplayStage === 1) setScoringStage(0);
+          if (gameplayStage === 2) setDismissalStage(0);
+          if (gameplayStage === 3) setOverStage(0);
+          if (gameplayStage === 4) setScoreReadingStage(0);
           setGameplayStage((current) => current + 1);
         } else {
           setActiveStep((current) => Math.min(steps.length - 1, current + 1));
@@ -711,8 +847,16 @@ export default function Home() {
           setTeamStage((current) => current - 1);
         } else if (activeStep === 5 && gameplayStage === 2 && scoringStage > 0) {
           setScoringStage((current) => current - 1);
+        } else if (activeStep === 5 && gameplayStage === 3 && dismissalStage > 0) {
+          setDismissalStage((current) => current - 1);
+        } else if (activeStep === 5 && gameplayStage === 4 && overStage > 0) {
+          setOverStage((current) => current - 1);
+        } else if (activeStep === 5 && gameplayStage === 5 && scoreReadingStage > 0) {
+          setScoreReadingStage((current) => current - 1);
         } else if (activeStep === 5 && gameplayStage > 0) {
           if (gameplayStage === 3) setScoringStage(scoringStages.length - 1);
+          if (gameplayStage === 4) setDismissalStage(dismissalStages.length - 1);
+          if (gameplayStage === 5) setOverStage(overStages.length - 1);
           setGameplayStage((current) => current - 1);
         } else {
           setActiveStep((current) => Math.max(0, current - 1));
@@ -722,13 +866,16 @@ export default function Home() {
 
     window.addEventListener("keydown", handleArrowKeys);
     return () => window.removeEventListener("keydown", handleArrowKeys);
-  }, [activeStep, teamStage, gameplayStage, scoringStage]);
+  }, [activeStep, teamStage, gameplayStage, scoringStage, dismissalStage, overStage, scoreReadingStage]);
 
   const goTo = (index: number) => {
     const nextStep = Math.max(0, Math.min(steps.length - 1, index));
     if (nextStep === 3 && activeStep !== 3) setTeamStage(0);
     if (nextStep === 5 && activeStep !== 5) setGameplayStage(0);
     if (nextStep === 5 && activeStep !== 5) setScoringStage(0);
+    if (nextStep === 5 && activeStep !== 5) setDismissalStage(0);
+    if (nextStep === 5 && activeStep !== 5) setOverStage(0);
+    if (nextStep === 5 && activeStep !== 5) setScoreReadingStage(0);
     setActiveStep(nextStep);
   };
   const goForward = () => {
@@ -740,8 +887,23 @@ export default function Home() {
       setScoringStage((current) => current + 1);
       return;
     }
+    if (activeStep === 5 && gameplayStage === 3 && dismissalStage < dismissalStages.length - 1) {
+      setDismissalStage((current) => current + 1);
+      return;
+    }
+    if (activeStep === 5 && gameplayStage === 4 && overStage < overStages.length - 1) {
+      setOverStage((current) => current + 1);
+      return;
+    }
+    if (activeStep === 5 && gameplayStage === 5 && scoreReadingStage < scoreReadingStages.length - 1) {
+      setScoreReadingStage((current) => current + 1);
+      return;
+    }
     if (activeStep === 5 && gameplayStage < gameplayStages.length - 1) {
       if (gameplayStage === 1) setScoringStage(0);
+      if (gameplayStage === 2) setDismissalStage(0);
+      if (gameplayStage === 3) setOverStage(0);
+      if (gameplayStage === 4) setScoreReadingStage(0);
       setGameplayStage((current) => current + 1);
       return;
     }
@@ -756,8 +918,22 @@ export default function Home() {
       setScoringStage((current) => current - 1);
       return;
     }
+    if (activeStep === 5 && gameplayStage === 3 && dismissalStage > 0) {
+      setDismissalStage((current) => current - 1);
+      return;
+    }
+    if (activeStep === 5 && gameplayStage === 4 && overStage > 0) {
+      setOverStage((current) => current - 1);
+      return;
+    }
+    if (activeStep === 5 && gameplayStage === 5 && scoreReadingStage > 0) {
+      setScoreReadingStage((current) => current - 1);
+      return;
+    }
     if (activeStep === 5 && gameplayStage > 0) {
       if (gameplayStage === 3) setScoringStage(scoringStages.length - 1);
+      if (gameplayStage === 4) setDismissalStage(dismissalStages.length - 1);
+      if (gameplayStage === 5) setOverStage(overStages.length - 1);
       setGameplayStage((current) => current - 1);
       return;
     }
@@ -768,14 +944,18 @@ export default function Home() {
     : activeStep === 5 && gameplayStage === 2
         ? { ...steps[5], ...scoringStages[scoringStage] }
         : activeStep === 5 && gameplayStage === 3
-          ? { ...steps[5], ...bowledStage }
+          ? { ...steps[5], ...dismissalStages[dismissalStage] }
+        : activeStep === 5 && gameplayStage === 4
+          ? { ...steps[5], ...overStages[overStage] }
+        : activeStep === 5 && gameplayStage === 5
+          ? { ...steps[5], ...scoreReadingStages[scoreReadingStage] }
         : activeStep === 5
           ? { ...steps[5], ...gameplayStages[gameplayStage] }
           : steps[activeStep];
-  const lessonComplete = activeStep === steps.length - 1 && gameplayStage === gameplayStages.length - 1;
+  const lessonComplete = activeStep === steps.length - 1 && gameplayStage === gameplayStages.length - 1 && scoreReadingStage === scoreReadingStages.length - 1;
 
   return (
-    <div className={`lesson lesson-step-${activeStep + 1} team-stage-${teamStage + 1} gameplay-stage-${gameplayStage + 1} scoring-stage-${scoringStage + 1}`} ref={root}>
+    <div className={`lesson lesson-step-${activeStep + 1} team-stage-${teamStage + 1} gameplay-stage-${gameplayStage + 1} scoring-stage-${scoringStage + 1} dismissal-stage-${dismissalStage + 1} over-stage-${overStage + 1} score-reading-stage-${scoreReadingStage + 1}`} ref={root}>
       <header className="lesson-header">
         <a className="brand" href="#lesson" aria-label="Crease lesson home">
           <span className="brand-mark" aria-hidden="true">C</span>
@@ -786,7 +966,7 @@ export default function Home() {
 
       <main className="lesson-canvas" id="lesson">
         <section className="copy-zone" aria-live="polite">
-          <div className="step-copy" key={`${activeStep}-${teamStage}-${gameplayStage}-${scoringStage}`}>
+          <div className="step-copy" key={`${activeStep}-${teamStage}-${gameplayStage}-${scoringStage}-${dismissalStage}-${overStage}-${scoreReadingStage}`}>
             <p className="eyebrow">{step.number} / {String(steps.length).padStart(2, "0")}</p>
             <h1>{step.title}</h1>
             <p className="step-body">{step.body}</p>
@@ -816,7 +996,7 @@ export default function Home() {
 
               {fielders.map(({ left, top, role }, index) => (
                 <div
-                  className={`player-token fielder role-${role}`}
+                  className={`player-token fielder role-${role} fielding-player-${index}`}
                   key={`fielder-${index}`}
                   style={{ left: `${left}%`, top: `${top}%` }}
                   aria-label={role === "wicketkeeper" ? "Wicketkeeper" : role === "bowler" ? "Bowler" : `Fielder ${index}`}
@@ -830,10 +1010,11 @@ export default function Home() {
               <div className="play-ball" aria-hidden="true" />
               <div className="hit-flash" aria-hidden="true" />
               <div className="score-boundary-flash" aria-hidden="true" />
+              <div className="lbw-path" aria-hidden="true" />
               <div className="extra-marker" aria-hidden="true">
                 {"marker" in scoringStages[scoringStage] ? scoringStages[scoringStage].marker : ""}
               </div>
-              <div className="wicket-marker" aria-hidden="true">Out — bowled</div>
+              <div className="wicket-marker" aria-hidden="true">{dismissalStages[dismissalStage].marker}</div>
               </div>
             </div>
           </div>
@@ -957,17 +1138,93 @@ export default function Home() {
           </div>
 
           <div className="dismissal-methods" aria-hidden={activeStep !== 5 || gameplayStage !== 3}>
-            {["Bowled", "Caught", "LBW", "Run out", "Stumped"].map((method) => (
-              <span className={`dismissal-method ${method === "Bowled" ? "is-active" : ""}`} key={method}>{method}</span>
+            {dismissalStages.map((method, index) => (
+              <button
+                className={`dismissal-method ${index === dismissalStage ? "is-active" : ""}`}
+                type="button"
+                key={method.key}
+                onClick={() => setDismissalStage(index)}
+                tabIndex={activeStep === 5 && gameplayStage === 3 ? 0 : -1}
+              >
+                {method.label}
+              </button>
             ))}
           </div>
 
           <div className="gameplay-panel over-panel" aria-hidden={activeStep !== 5 || gameplayStage !== 4}>
-            <span className="over-kicker">1 over</span>
-            <div className="over-balls" aria-label="Six legal balls">
-              {Array.from({ length: 6 }, (_, index) => <i className="over-ball" key={index}>{index + 1}</i>)}
+            <div className="gameplay-tabs" aria-label="Over explanations">
+              {overStages.map((item, index) => (
+                <button
+                  className={index === overStage ? "is-active" : ""}
+                  type="button"
+                  key={item.key}
+                  onClick={() => setOverStage(index)}
+                  tabIndex={activeStep === 5 && gameplayStage === 4 ? 0 : -1}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
-            <strong>6 legal balls</strong>
+
+            {overStage === 0 ? (
+              <div className="over-stage-content">
+                <span className="over-kicker">1 over</span>
+                <div className="over-balls" aria-label="Six legal balls">
+                  {Array.from({ length: 6 }, (_, index) => <i className="over-ball" key={index}>{index + 1}</i>)}
+                </div>
+                <strong>6 legal balls</strong>
+              </div>
+            ) : overStage === 1 ? (
+              <div className="over-stage-content">
+                <span className="over-kicker">Example over</span>
+                <div className="over-deliveries" aria-label="Eight deliveries containing six legal balls, one wide and one no-ball">
+                  {["1", "Wd", "2", "Nb", "3", "4", "5", "6"].map((ball, index) => (
+                    <i className={`over-delivery ${ball === "Wd" || ball === "Nb" ? "is-extra" : ""}`} key={`${ball}-${index}`}>{ball}</i>
+                  ))}
+                </div>
+                <strong>8 deliveries · 6 legal balls</strong>
+              </div>
+            ) : (
+              <div className="over-stage-content end-switch" aria-label="Overs alternate between opposite ends">
+                <span className="end-switch-piece end-label">End A</span>
+                <div className="end-switch-piece end-route"><i>Over 1</i><span>↓</span><i>Over 2</i><span>↑</span></div>
+                <span className="end-switch-piece end-label">End B</span>
+                <strong className="end-switch-piece">Alternate ends · change bowler</strong>
+              </div>
+            )}
+          </div>
+
+          <div className="gameplay-panel score-reader-panel" aria-hidden={activeStep !== 5 || gameplayStage !== 5}>
+            <div className="gameplay-tabs" aria-label="Score explanations">
+              {scoreReadingStages.map((item, index) => (
+                <button
+                  className={index === scoreReadingStage ? "is-active" : ""}
+                  type="button"
+                  key={item.key}
+                  onClick={() => setScoreReadingStage(index)}
+                  tabIndex={activeStep === 5 && gameplayStage === 5 ? 0 : -1}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="scoreboard-card">
+              <div className="scoreboard-team score-read-piece"><b>IND</b><span>T20 · chase</span></div>
+              <div className="scoreboard-line score-read-piece">
+                <span className="score-runs">154<small>runs</small></span>
+                <i>/</i>
+                <span className="score-wickets">3<small>wickets lost</small></span>
+                <b className="score-overs">18.2 <small>ov</small></b>
+              </div>
+              <div className="score-over-breakdown score-read-piece">
+                <span>18 complete overs</span><i>+</i><span>2 balls</span>
+              </div>
+              <div className="chase-line score-read-piece">
+                <span>Target <b>181</b></span><i />
+                <span>Need <b>27</b> from <b>10</b> balls</span>
+              </div>
+            </div>
           </div>
         </section>
       </main>
